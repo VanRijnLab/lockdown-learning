@@ -1,0 +1,637 @@
+---
+title: 'SlimStampen Performance During Lockdown'
+author: "Maarten van der Velde"
+date: "Last updated: `r Sys.Date()`"
+output:
+  html_notebook:
+    smart: no
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: no
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+# Setup
+
+```{r}
+library(data.table)
+library(DBI)
+library(ggplot2)
+library(cowplot)
+library(grid)
+
+Sys.setlocale("LC_TIME", "en_US.UTF-8") # Print English date format
+# Sys.setlocale("LC_TIME", "nl_NL.UTF-8") # Print Dutch date format
+
+number_format <- scales::number_format(big.mark = ",", decimal.mark = ".") # Print English number format
+# number_format <- scales::number_format(big.mark = ".", decimal.mark = ",") # Print Dutch number format
+
+theme_paper <- theme_classic(base_size = 12) + 
+  theme(axis.text = element_text(colour = "black"),
+        panel.grid.major.y = element_line(colour = "grey92"))
+```
+
+School closure and opening dates
+
+Sources:
+- https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport
+- https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open
+```{r}
+date_schools_closed <- as.POSIXct("2020-03-16")
+date_schools_opened <- as.POSIXct("2020-06-02")
+```
+
+
+Handle database connections
+```{r}
+db_connect <- function() {
+  db <- dbConnect(RSQLite::SQLite(), file.path("..", "data", "noordhoff.sqlite"))
+  return(db)
+}
+
+db_disconnect <- function(db) {
+  dbDisconnect(db)
+}
+```
+
+
+# Data
+
+The database contains all SlimStampen data collected via Noordhoff's platform in three courses: *Stepping Stones* (English), *Grandes Lignes* (French), and *Neue Kontakte* (German).
+
+Trial-level response data are stored in the `responses` table.
+Book information, such as the course year, book title, and chapter, are stored in the `book_info` table.
+
+## `responses`
+
+| Column               | Type      | Explanation                                   |
+|----------------------|-----------|-----------------------------------------------|
+| date                 | int       | UNIX time stamp [s]                           |
+| user_id              | chr       | unique user identifier                        |
+| method               | chr       | course                                        |
+| start_time           | int       | elapsed time since session start [ms]         |
+| rt                   | int       | response time [ms]                            |
+| duration             | int       | trial duration [ms]                           |
+| fact_id              | int       | unique fact identifier (within chapter)       |
+| correct              | int       | response accuracy                             |
+| answer               | chr       | user's response                               |
+| choices              | int       | number of answer choices (1 == open response) |
+| backspace_used       | dbl       | user pressed backspace during trial           |
+| backspace_used_first | dbl       | user erased first character of response       |
+| study                | int       | trial was a study trial                       |
+| answer_language      | chr       | language of the answer                        |
+| subsession           | int       | identifies part within learning session       |
+| book_info_id         | chr       | unique identifier of book information         |
+
+
+## `book_info`
+
+| Column               | Type      | Explanation                                   |
+|----------------------|-----------|-----------------------------------------------|
+| book_info_id         | chr       | unique identifier of book information         |
+| method_group         | chr       | year and edition                              |
+| book_title           | chr       | book title (incl. year, level, edition)       |
+| book_type            | chr       | type of book                                  |
+| chapter              | chr       | chapter number and title                      |
+
+
+Preview first 10 rows
+```{r}
+db <- db_connect()
+responses_top <- dbGetQuery(db, "SELECT * FROM responses LIMIT 10")
+responses_top
+
+book_info_top <- dbGetQuery(db, "SELECT * FROM book_info LIMIT 10")
+book_info_top
+db_disconnect(db)
+```
+
+
+# Performance
+
+There are several measures of learning performance we can look at.
+The most straight-forward of these are response accuracy and response time.
+
+Important factors to keep in mind: question type (multiple choice or open answer) and language.
+Note that we cannot distinguish between NL-X and X-X, since we only know the language of the answer.
+
+## Response accuracy
+
+
+```{r}
+db <- db_connect()
+correct <- dbGetQuery(db, 
+                      "SELECT r.method AS 'method',
+                      DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                      r.user_id AS 'user',
+                      r.choices > 1 AS 'mcq',
+                      r.correct AS 'correct',
+                      COUNT(*) AS 'n'
+                      FROM 'responses' r
+                      WHERE r.study == 0
+                      GROUP BY r.method,
+                      DATE(r.date + 3600, 'unixepoch'),
+                      r.user_id,
+                      r.choices > 1,
+                      r.correct"
+)
+setDT(correct)
+db_disconnect(db)
+```
+
+Fill in missing rows (where all trials on a day were correct/incorrect):
+```{r}
+correct <- tidyr::complete(correct, tidyr::nesting(method, doy, user, mcq), correct, fill = list(n = 0))
+setDT(correct)
+```
+
+```{r}
+accuracy <- correct[, .(accuracy = n[correct == 1]/sum(n)), by = .(method, doy, user, mcq)]
+```
+
+Add a school year column (cutoff date: 1 August):
+```{r}
+accuracy[, doy_posix := as.POSIXct(doy)]
+accuracy[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
+```
+
+Add sensible course names:
+```{r}
+accuracy[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+```
+
+Align school years:
+```{r}
+accuracy[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
+accuracy[school_year == "19/20", doy_posix_aligned := doy_posix]
+```
+
+Use cut.Date() to bin dates by week. Each day is assigned the date of the most recent Monday.
+```{r}
+accuracy[, doy_posix_week := cut.POSIXt(doy_posix, "week")]
+accuracy[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
+```
+
+```{r}
+accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
+
+accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
+```
+
+Add question type labels:
+```{r}
+accuracy_by_week[, question_type := ifelse(mcq == TRUE, "Multiple choice", "Open answer")]
+```
+
+
+Plot response accuracy by week (mean +/- 1 SE).
+```{r}
+p_acc <- ggplot(accuracy_by_week[(course == "English" & mcq == TRUE) | course == "French",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(. ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(limits = c(.7, 1), labels = scales::percent_format(accuracy = 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc
+
+ggsave("../output/acc_by_question_type.pdf", width = 9, height = 3)
+ggsave("../output/acc_by_question_type.png", width = 9, height = 3)
+```
+
+
+## Response time
+
+```{r}
+db <- db_connect()
+rt <- dbGetQuery(db, 
+                 "SELECT r.method AS 'method',
+                  DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                  r.user_id AS 'user',
+                  r.choices > 1 AS 'mcq',
+                  r.rt AS 'rt'
+                  FROM 'responses' r
+                  WHERE r.study == 0
+                  AND r.correct == 1
+                 "
+)
+setDT(rt)
+db_disconnect(db)
+```
+
+```{r}
+doys <- rt[, .(doy = unique(doy))][, doy_posix_week := cut.POSIXt(as.POSIXct(doy), "week")][]
+```
+
+
+```{r}
+rt <- rt[doys, on = "doy"]
+```
+
+```{r}
+rt_med <- rt[, .(rt_median = median(rt)), by = .(method, doy_posix_week, user, mcq)]
+
+rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(method, doy_posix_week, mcq)]
+
+rt_by_week[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+```
+
+Overlap the two school years:
+```{r}
+rt_by_week[, school_year := ifelse(as.POSIXct(doy_posix_week) < "2019-08-01", "18/19", "19/20")]
+rt_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type labels:
+```{r}
+rt_by_week[, question_type := ifelse(mcq == TRUE, "Multiple choice", "Open answer")]
+```
+
+
+Plot response accuracy by week (mean +/- 1 SE).
+```{r}
+p_rt <- ggplot(rt_by_week[(course == "English" & mcq == TRUE) | course == "French",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(. ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(limits = c(1.7, 3.7), labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt
+
+ggsave("../output/rt_by_question_type.pdf", width = 9, height = 3)
+ggsave("../output/rt_by_question_type.png", width = 9, height = 3)
+```
+
+
+## Combination plot
+
+```{r}
+p_legend <- get_legend(p_acc)
+
+p_acc <- p_acc +
+  guides(colour = FALSE, fill = FALSE, lty = FALSE)
+
+p_rt <- p_rt +
+  guides(colour = FALSE, fill = FALSE, lty = FALSE)
+```
+
+Combine plots:
+```{r}
+plot_grid(
+  plot_grid(p_acc, p_rt,
+            ncol = 1,
+            labels = c("A", "B")),
+  p_legend,
+  rel_widths = c(1, .25)
+)
+
+ggsave("../output/combi_acc_rt.pdf", width = 9, height = 4.5)
+ggsave("../output/combi_acc_rt.png", width = 9, height = 4.5)
+```
+
+
+
+# Learning progress
+
+Since we do not have persistent user IDs, we cannot say for certain how any particular student is progressing over the course of a year.
+We can however look at progress through the book in aggregate.
+
+Get the unique book chapter IDs on each day:
+```{r}
+db <- db_connect()
+
+progress <- dbGetQuery(db,
+                       "SELECT DISTINCT r.book_info_id AS 'book_info_id',
+                        r.method AS 'method',
+                        DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                        COUNT(*) AS 'trials'
+                        FROM 'responses' r
+                        GROUP BY r.method,
+                        r.book_info_id,
+                        DATE(r.date + 3600, 'unixepoch');"
+                       )
+
+db_disconnect(db)
+
+setDT(progress)
+```
+
+Join with the book chapter information:
+```{r}
+db <- db_connect()
+book_info <- dbGetQuery(db, "SELECT DISTINCT * FROM 'book_info'")
+db_disconnect(db)
+
+setDT(book_info)
+```
+
+```{r}
+progress[book_info[book_type == "Hoofdboek",], on  = "book_info_id", c("method_group", "book_title", "chapter") := .(i.method_group, i.book_title, i.chapter)]
+```
+
+Add sensible course names:
+```{r}
+progress[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+```
+
+Add a school year column (cutoff date: 1 August):
+```{r}
+progress[, doy_posix := as.POSIXct(doy)]
+progress[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
+```
+
+Consolidate count by day and chapter:
+```{r}
+progress_by_day <- progress[, .(trials = sum(trials)), by = .(school_year, doy_posix, course, method_group, book_title, chapter)]
+```
+
+
+Simplify level names:
+```{r}
+# Keep all distinctions
+progress_by_day[, book_title_simple := stringr::str_sub(book_title, 3, -10)]
+progress_by_day[, book_title_simple := factor(book_title_simple, levels = c("vmbo b/lwoo", "vmbo b", "vmbo bk", "vmbo k", "vmbo kgt", "vmbo-gt", "vmbo gt", "vmbo-gt/havo", "vmbo (t)hv", "havo", "havo vwo", "vwo"))]
+
+# Simplify to three levels
+progress_by_day[, level := dplyr::case_when(
+  grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
+  grepl("havo", book_title) ~ "General secondary\n(havo)",
+  grepl("vwo", book_title) ~ "Pre-university\n(vwo)",
+  TRUE ~ "Other")]
+progress_by_day[, level := factor(level, levels = c("Other", "Pre-vocational\n(vmbo)", "General secondary\n(havo)", "Pre-university\n(vwo)"))]
+```
+
+Simplify year names:
+```{r}
+progress_by_day[, year := dplyr::case_when(
+  method_group == "Leerjaar 1 (5e Ed.)" ~ "Year 1",
+  method_group == "Leerjaar 2 (5e Ed.)" ~ "Year 2",
+  method_group == "Leerjaar 3 (5e Ed.)" ~ "Year 3",
+  method_group == "Leerjaar 3/4 (5e Ed.)" ~ "Year 3/4",
+  method_group == "Leerjaar 4 (5e Ed.)" ~ "Year 4",
+  method_group == "Tweede Fase (6e Ed.)" ~ "Tweede Fase",
+  TRUE ~ "Other")]
+```
+
+
+Simplify chapter names:
+```{r}
+# In most cases, the chapter name starts with a number
+progress_by_day[, chapter_simple := as.factor(as.numeric(stringr::str_extract(chapter, "^\\d{1,2}")))]
+
+unique(progress_by_day[is.na(chapter_simple),]$chapter)
+```
+
+
+Align school years:
+```{r}
+progress_by_day[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
+progress_by_day[school_year == "19/20", doy_posix_aligned := doy_posix]
+```
+
+Use cut.Date() to bin dates by week and month. Each day is assigned the date of the most recent Monday.
+```{r}
+progress_by_day[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
+progress_by_day[, doy_posix_aligned_month := cut.POSIXt(doy_posix_aligned, "month")]
+```
+
+Calculate proportions by week and month:
+```{r}
+progress_by_week <- progress_by_day[, .(trials = sum(trials)), by = .(school_year, doy_posix_aligned_week, course, level, year, chapter_simple)]
+progress_by_week[, prop := trials/sum(trials), by = .(school_year, doy_posix_aligned_week, course, level, year)]
+
+progress_by_month <- progress_by_day[, .(trials = sum(trials)), by = .(school_year, doy_posix_aligned_month, course, level, year, chapter_simple)]
+progress_by_month[, prop := trials/sum(trials), by = .(school_year, doy_posix_aligned_month, course, level, year)]
+```
+
+```{r}
+setorder(progress_by_week, chapter_simple)
+setorder(progress_by_month, chapter_simple)
+```
+
+
+### French
+```{r}
+p_french_y1 <- ggplot(progress_by_week[course == "French" & year == "Year 1"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+p_french_y2 <- ggplot(progress_by_week[course == "French" & year == "Year 2"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+p_french_y3 <- ggplot(progress_by_week[course == "French" & year == "Year 3/4"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+plot_grid(p_french_y1, p_french_y2, p_french_y3, 
+          ncol = 1,
+          align = "hv", axis = "tblr",
+          labels = c("Year 1", "Year 2", "Year 3/4"),
+          hjust = -0.1,
+          scale = .95)
+
+ggsave("../output/progress_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_french.png", width = 9, height = 9)
+```
+
+### English
+
+NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are shown as blank space in the plot.
+They don't seem to fit neatly in the chapter sequence.
+```{r}
+p_english_y1 <- ggplot(progress_by_week[course == "English" & year == "Year 1"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level, drop = FALSE) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+p_english_y2 <- ggplot(progress_by_week[course == "English" & year == "Year 2"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level, drop = FALSE) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+p_english_y3 <- ggplot(progress_by_week[course == "English" & year == "Year 3"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level, drop = FALSE) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+p_english_y4 <- ggplot(progress_by_week[course == "English" & year == "Year 4"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(school_year ~ level, drop = FALSE) +
+  geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter") +
+  theme_paper
+
+plot_grid(p_english_y1, p_english_y2, p_english_y3, p_english_y4,
+          ncol = 1,
+          align = "hv", axis = "tblr",
+          labels = c("Year 1", "Year 2", "Year 3", "Year 4"),
+          hjust = -0.1,
+          scale = .95)
+
+ggsave("../output/progress_english.pdf", width = 9, height = 9)
+ggsave("../output/progress_english.png", width = 9, height = 9)
+```
+
+
+
+
+# Session info
+```{r}
+sessionInfo()
+```

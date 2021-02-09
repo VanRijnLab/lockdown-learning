@@ -23,6 +23,8 @@ library(DBI)
 library(ggplot2)
 library(cowplot)
 library(grid)
+library(lme4)
+library(lmerTest)
 
 Sys.setlocale("LC_TIME", "en_US.UTF-8") # Print English date format
 # Sys.setlocale("LC_TIME", "nl_NL.UTF-8") # Print Dutch date format
@@ -150,7 +152,11 @@ setDT(correct)
 ```
 
 ```{r}
-accuracy <- correct[, .(accuracy = n[correct == 1]/sum(n)), by = .(method, doy, user, mcq)]
+correct[, mcq := as.logical(mcq)]
+```
+
+```{r}
+accuracy <- correct[, .(accuracy = n[correct == 1]/sum(n), n = sum(n)), by = .(method, doy, user, mcq)]
 ```
 
 Add a school year column (cutoff date: 1 August):
@@ -226,6 +232,99 @@ ggsave("../output/acc_by_question_type.png", width = 9, height = 3)
 ```
 
 
+Fit a mixed effects model to the daily accuracy data:
+```{r}
+accuracy[, period := dplyr::case_when(
+  doy_posix_aligned >= date_schools_opened ~ "post-lockdown",
+  doy_posix_aligned >= date_schools_closed & doy_posix_aligned < date_schools_opened ~ "during-lockdown",
+  doy_posix_aligned < date_schools_opened ~ "pre-lockdown"
+)]
+
+# Reorder factor levels so that intercept is pre-lockdown open answer in 19/20
+accuracy[, period := factor(period, levels = c("pre-lockdown", "during-lockdown", "post-lockdown"))]
+accuracy[, school_year := factor(school_year, levels = c("19/20", "18/19"))]
+accuracy[, mcq := factor(mcq, levels = c(FALSE, TRUE))]
+```
+
+Since we know the number of trials per day and the proportion correct (accuracy), we can use a binomial GLMM:
+```{r}
+if(!file.exists("../output/m_acc_fit.rds")) {
+  m_acc <- glmer(accuracy ~ period*school_year*mcq + (1 | user) + (1 | course),
+                 data = accuracy[(course == "English" & mcq == TRUE) | course == "French",],
+                 family = "binomial", 
+                 weights = n,
+                 nAGQ = 0,
+                 control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e6)))
+  saveRDS(m_acc, "../output/m_acc_fit.rds")
+} else {
+  m_acc <- readRDS("../output/m_acc_fit.rds")
+}
+
+m_acc_summary <- summary(m_acc)
+m_acc_summary
+```
+
+Save coefficients as a table for in the paper:
+```{r}
+m_acc_coef <- as.data.frame(m_acc_summary$coefficients)
+setDT(m_acc_coef, keep.rownames = TRUE)
+m_acc_coef$rn <- c("Intercept \\small{(Period: pre-lockdown, School year: 19/20, Question type: open answer)}",
+                   "Period: lockdown",
+                   "Period: post-lockdown",
+                   "School year: 18/19",
+                   "Question type: multiple choice",
+                   "Period: lockdown $\\times$ School year: 18/19",
+                   "Period: post-lockdown $\\times$ School year: 18/19",
+                   "Period: lockdown $\\times$ Question type: multiple choice",
+                   "Period: post-lockdown $\\times$ Question type: multiple choice",
+                   "School year: 18/19 $\\times$ Question type: multiple choice",
+                   "Period: lockdown $\\times$ School year: 18/19 $\\times$ Question type: multiple choice",
+                   "Period: post-lockdown $\\times$ School year: 18/19 $\\times$ Question type: multiple choice")
+
+# Format p-values
+m_acc_coef$`Pr(>|z|)` <- format.pval(m_acc_coef$`Pr(>|z|)`, eps = .001, digits = 3, flag = "0")
+m_acc_coef$`Pr(>|z|)` <- sub('^(<)?0[.]', '\\1.', m_acc_coef$`Pr(>|z|)`) # Remove leading zero
+
+cat(knitr::kable(m_acc_coef,
+                 align = c("l","r", "r", "r", "r"),
+                 digits = c(NA, 3, 3, 2, NA),
+                 col.names = c("Effect", "$b$", "SE", "$z$", "$p$"),
+                 format = "latex",
+                 booktabs = TRUE,
+                 escape = FALSE),
+    file = "../output/m_acc_table.tex")
+```
+
+Visualise the model fit:
+```{r}
+acc_fit <- expand.grid(period = c("pre-lockdown", "during-lockdown", "post-lockdown"), school_year = c("18/19", "19/20"), mcq = c(TRUE, FALSE))
+acc_fit <- cbind(acc_fit, accuracy = predict(m_acc, type = "response", re.form = NA, newdata = acc_fit))
+acc_fit
+
+ggplot(acc_fit, aes(x = period, y = accuracy, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(limits = c(.7, 1), labels = scales::percent_format()) +
+  theme_paper
+```
+
+Empirical means:
+```{r}
+accuracy_mean <- accuracy[(course == "English" & mcq == TRUE) | course == "French", .(accuracy = sum(accuracy * n)/sum(n)), by = .(period, school_year, mcq, user, course)][, .(accuracy = mean(accuracy), accuracy_sd = sd(accuracy)), by = .(period, school_year, mcq)]
+accuracy_mean
+```
+
+```{r}
+ggplot(accuracy_mean, aes(x = period, y = accuracy, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(limits = c(.7, 1), labels = scales::percent_format()) +
+  theme_paper
+```
+
+
+
+
 ## Response time
 
 ```{r}
@@ -246,25 +345,48 @@ db_disconnect(db)
 ```
 
 ```{r}
-doys <- rt[, .(doy = unique(doy))][, doy_posix_week := cut.POSIXt(as.POSIXct(doy), "week")][]
-```
+doys <- rt[, .(doy = unique(doy))][, doy_posix := as.POSIXct(doy)][]
+doys[, doy_posix_week := cut.POSIXt(as.POSIXct(doy), "week")]
+doys[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
+doys[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
+doys[school_year == "19/20", doy_posix_aligned := doy_posix]
+doys[, period := dplyr::case_when(
+  doy_posix_aligned >= date_schools_opened ~ "post-lockdown",
+  doy_posix_aligned >= date_schools_closed & doy_posix_aligned < date_schools_opened ~ "during-lockdown",
+  doy_posix_aligned < date_schools_opened ~ "pre-lockdown"
+)]
 
+# Reorder factor levels so that intercept is pre-lockdown in 19/20
+doys[, period := factor(period, levels = c("pre-lockdown", "during-lockdown", "post-lockdown"))]
+doys[, school_year := factor(school_year, levels = c("19/20", "18/19"))]
+```
 
 ```{r}
 rt <- rt[doys, on = "doy"]
 ```
 
 ```{r}
-rt_med <- rt[, .(rt_median = median(rt)), by = .(method, doy_posix_week, user, mcq)]
+rt[, mcq := as.factor(as.logical(mcq))]
+```
 
-rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(method, doy_posix_week, mcq)]
+```{r}
+rt[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+```
 
-rt_by_week[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+Throw out trials with negative RTs (timing errors)
+```{r}
+rt <- rt[rt > 0]
+```
+
+
+```{r}
+rt_med <- rt[, .(rt_median = median(rt)), by = .(period, school_year, mcq, user, course, doy_posix_week)]
+
+rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(period, school_year, mcq, course, doy_posix_week)]
 ```
 
 Overlap the two school years:
 ```{r}
-rt_by_week[, school_year := ifelse(as.POSIXct(doy_posix_week) < "2019-08-01", "18/19", "19/20")]
 rt_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
 rt_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
 ```
@@ -274,8 +396,12 @@ Add question type labels:
 rt_by_week[, question_type := ifelse(mcq == TRUE, "Multiple choice", "Open answer")]
 ```
 
+```{r}
+rt_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
 
-Plot response accuracy by week (mean +/- 1 SE).
+
+Plot response time by week (mean +/- 1 SE).
 ```{r}
 p_rt <- ggplot(rt_by_week[(course == "English" & mcq == TRUE) | course == "French",],
             aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
@@ -309,6 +435,102 @@ p_rt
 
 ggsave("../output/rt_by_question_type.pdf", width = 9, height = 3)
 ggsave("../output/rt_by_question_type.png", width = 9, height = 3)
+```
+
+Fit a generalised linear mixed effects model (assuming a Gamma distribution for RT and an identity link function; Lo & Andrew, 2015) to the daily median RT:
+```{r}
+if(!file.exists("../output/m_rt_fit.rds")) {
+  m_rt <- glmer(rt_median ~ period*school_year*mcq + (1 | user) + (1 | course),
+                 data = rt_med[(course == "English" & mcq == TRUE) | course == "French",],
+                 family = Gamma(link = "identity"),
+                 nAGQ = 0,
+                 control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e6)))
+  saveRDS(m_rt, "../output/m_rt_fit.rds")
+} else {
+  m_rt <- readRDS("../output/m_rt_fit.rds")
+}
+
+m_rt_summary <- summary(m_rt)
+m_rt_summary
+```
+
+Save coefficients as a table for in the paper:
+```{r}
+m_rt_coef <- as.data.frame(m_rt_summary$coefficients)
+setDT(m_rt_coef, keep.rownames = TRUE)
+m_rt_coef$rn <- c("Intercept \\small{(Period: pre-lockdown, School year: 19/20, Question type: open answer)}",
+                   "Period: lockdown",
+                   "Period: post-lockdown",
+                   "School year: 18/19",
+                   "Question type: multiple choice",
+                   "Period: lockdown $\\times$ School year: 18/19",
+                   "Period: post-lockdown $\\times$ School year: 18/19",
+                   "Period: lockdown $\\times$ Question type: multiple choice",
+                   "Period: post-lockdown $\\times$ Question type: multiple choice",
+                   "School year: 18/19 $\\times$ Question type: multiple choice",
+                   "Period: lockdown $\\times$ School year: 18/19 $\\times$ Question type: multiple choice",
+                   "Period: post-lockdown $\\times$ School year: 18/19 $\\times$ Question type: multiple choice")
+
+# Format p-values
+m_rt_coef$`Pr(>|z|)` <- format.pval(m_rt_coef$`Pr(>|z|)`, eps = .001, digits = 3, flag = "0")
+m_rt_coef$`Pr(>|z|)` <- sub('^(<)?0[.]', '\\1.', m_rt_coef$`Pr(>|z|)`) # Remove leading zero
+
+cat(knitr::kable(m_rt_coef,
+                 align = c("l","r", "r", "r", "r"),
+                 digits = c(NA, 3, 3, 2, NA),
+                 col.names = c("Effect", "$b$", "SE", "$z$", "$p$"),
+                 format = "latex",
+                 booktabs = TRUE,
+                 escape = FALSE),
+    file = "../output/m_rt_table.tex")
+```
+
+Visualise the model fit:
+```{r}
+rt_fit <- expand.grid(period = c("pre-lockdown", "during-lockdown", "post-lockdown"), school_year = c("18/19", "19/20"), mcq = c(TRUE, FALSE))
+rt_fit <- cbind(rt_fit, rt = predict(m_rt, type = "response", re.form = NA, newdata = rt_fit))
+rt_fit
+
+ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(limits = c(1500, 4000)) +
+  theme_paper
+```
+
+Empirical means:
+```{r}
+rt_mean <- rt_med[(course == "English" & mcq == TRUE) | course == "French", .(rt = mean(rt_median)), by = .(period, school_year, mcq, user, course)][, .(rt = mean(rt), rt_sd = sd(rt)), by = .(period, school_year, mcq, course)]
+rt_mean[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+rt_mean
+```
+
+```{r}
+ggplot(rt_mean, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
+  facet_grid(~ course) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(limits = c(1500, 3000)) +
+  theme_paper
+```
+
+Fitting a simple LMER to the summary data gives more accurate coefficients:
+```{r}
+rt_mean[, school_year := factor(school_year, levels = c("19/20", "18/19"))]
+m_rt_simple <- lmer(rt ~ period*school_year*mcq + (1 | course), data = rt_mean)
+summary(m_rt_simple)
+```
+
+```{r}
+rt_fit <- expand.grid(period = c("pre-lockdown", "during-lockdown", "post-lockdown"), school_year = c("18/19", "19/20"), mcq = c(TRUE, FALSE))
+rt_fit <- cbind(rt_fit, rt = predict(m_rt_simple, type = "response", re.form = NA, newdata = rt_fit))
+rt_fit
+
+ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(limits = c(1500, 4000)) +
+  theme_paper
 ```
 
 
@@ -426,9 +648,13 @@ progress_by_day[, year := dplyr::case_when(
 Simplify chapter names:
 ```{r}
 # In most cases, the chapter name starts with a number
-progress_by_day[, chapter_simple := as.factor(as.numeric(stringr::str_extract(chapter, "^\\d{1,2}")))]
+progress_by_day[, chapter_simple := factor(as.numeric(stringr::str_extract(chapter, "^\\d{1,2}")))]
 
+# Remaining cases:
 unique(progress_by_day[is.na(chapter_simple),]$chapter)
+
+# Combine these chapters into an "other" category
+progress_by_day[is.na(chapter_simple), chapter_simple := "O"]
 ```
 
 
@@ -532,10 +758,154 @@ ggsave("../output/progress_french.pdf", width = 9, height = 9)
 ggsave("../output/progress_french.png", width = 9, height = 9)
 ```
 
+
+Did the share of trials change between school years?
+We can simplify the analysis by aggregating over the whole lockdown period.
+```{r}
+progress_lockdown <- progress_by_day[between(doy_posix_aligned, date_schools_closed, date_schools_opened), .(trials = sum(trials)), by = .(school_year, course, level, year, chapter_simple)]
+
+# Fill in missing rows (occurs when chapter was only studied in one of the two years)
+progress_lockdown <- as.data.table(tidyr::complete(progress_lockdown, tidyr::nesting(course, level, year, chapter_simple), school_year, fill = list(trials = 0))) 
+  
+progress_lockdown[, prop := trials/sum(trials), by = .(school_year, course, level, year)]
+
+setorder(progress_lockdown, chapter_simple)
+```
+
+```{r}
+ggplot(progress_lockdown[course == "French"], aes(x = school_year, y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(level ~ year) +
+  geom_col(colour = NA) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter",
+       title = "French") +
+  theme_paper
+```
+
+Perform a chi-square test of homogeneity to determine whether school years are significantly different.
+
+```{r}
+for (y in sort(unique(progress_lockdown$year))) {
+  for (l in levels(progress_lockdown$level)) {
+    d <- progress_lockdown[course == "French" & year == y & level == l]
+    if (nrow(d) > 0) {
+      print(paste(k, y, l, collapse= " "))
+      print(
+        chisq.test(
+          dcast(d, school_year ~ chapter_simple, value.var = "trials", fill = 0)[, school_year := NULL]
+        )
+      )
+    }
+  } 
+}
+```
+
+Conclusion: all tests indicate a difference in proportions between school years (p << 0.001).
+
+Visualise the change between school years:
+```{r}
+progress_lockdown[, prop_change := prop[school_year == "19/20"] - prop[school_year == "18/19"], by = .(course, level, year, chapter_simple)]
+
+ggplot(progress_lockdown[school_year == "19/20" & course == "French"], aes(x = chapter_simple, y = (prop_change * 100), colour = chapter_simple, group = school_year)) +
+  facet_grid(level ~ year, scales = "free_x") +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(xend = chapter_simple), yend = 0) +
+  geom_point() +
+  scale_y_continuous(limits = c(-25, 25)) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = "Chapter",
+       y = "Change in trial share\n(percentage points)",
+       title = "French") +
+  theme_paper
+```
+
+Are these changes really important? We may expect a certain amount of fluctuation between any pair of school years. We don't have data from before the 18/19 school year, but we can look at how the magnitude of changes during the lockdown period compares to changes earlier in the school year.
+
+To keep things as comparable as possible, use a sliding time window with the same size as the lockdown period:
+```{r}
+time_window <- as.numeric(round(date_schools_opened - date_schools_closed))
+time_window
+```
+
+```{r}
+date_range <- sort(unique(progress_by_day$doy_posix_aligned))
+date_range <- date_range[date_range < date_schools_closed]
+
+prop_change_window <- data.table()
+
+for (i in 1:(length(date_range) - as.numeric(time_window))) {
+  d <- date_range[i:(i + time_window - 1)]
+  progress_window <- progress_by_day[course %in% c("French", "English") & doy_posix_aligned %in% d,
+                                     .(trials = sum(trials)),
+                                     by = .(school_year, course, level, year, chapter_simple)]
+  
+  # Fill in missing rows (occurs when chapter was only studied in one of the two years)
+  progress_window <- as.data.table(tidyr::complete(progress_window, tidyr::nesting(course, level, year, chapter_simple), school_year, fill = list(trials = 0))) 
+  
+  progress_window[, prop := trials/sum(trials), by = .(school_year, course, level, year)]
+
+  progress_window[, prop_change := prop[school_year == "19/20"] - prop[school_year == "18/19"], by = .(course, level, year, chapter_simple)]
+  
+  prop_change_window <- rbind(prop_change_window, progress_window[school_year == "19/20",][,window := i][,date_min := min(d)][,date_max := max(d)])
+}
+```
+
+
+The density of year-to-year changes can be visualised by time window:
+```{r}
+ggplot(prop_change_window, aes(x = prop_change * 100, y = window, group = window)) +
+  ggridges::geom_density_ridges(alpha = 0.1, scale = 25, fill = NA) +
+  labs(x = "Change in trial share\n(percentage points)",
+         y = "Time window") +
+  theme_paper
+```
+
+Compare the aggregated density to the changes during the lockdown period:
+```{r}
+prop_change_combined <- rbind(prop_change_window[, period := "Pre-lockdown"], progress_lockdown[course %in% c("French", "English") & school_year == "19/20", period := "Lockdown"], fill = TRUE)
+prop_change_combined[, period := factor(period, levels = c("Pre-lockdown", "Lockdown"))]
+
+ggplot(prop_change_combined, aes(x = prop_change, colour = period)) +
+  geom_density() +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = "Change in trial share\n(percentage points)",
+       y = "Density",
+       colour = NULL) +
+  theme_paper
+```
+
+Add boundaries based on the typical spread to the change plot:
+```{r}
+change_sd <- sd(prop_change_window$prop_change) * 100 
+
+ggplot(progress_lockdown[school_year == "19/20" & course == "French"], aes(x = chapter_simple, y = (prop_change * 100), colour = chapter_simple, group = school_year)) +
+  geom_rect(xmin = 0, xmax = 1000, ymin = -2*change_sd, ymax = 2*change_sd, fill = "grey80", colour = NA) +
+  geom_rect(xmin = 0, xmax = 1000, ymin = -change_sd, ymax = change_sd, fill = "grey65", colour = NA) +
+  facet_grid(level ~ year, scales = "free_x") +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(xend = chapter_simple), yend = 0) +
+  geom_point() +
+  scale_y_continuous(limits = c(-25, 25)) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = "Chapter",
+       y = "Change in trial share\n(percentage points)") +
+  theme_paper
+
+ggsave("../output/progress_change_french.pdf", width = 9, height = 5)
+ggsave("../output/progress_change_french.png", width = 9, height = 5)
+```
+
+
+
 ### English
 
-NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are shown as blank space in the plot.
-They don't seem to fit neatly in the chapter sequence.
+NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are shown as "O" in the plot.
+They don't seem to fit neatly in the chapter sequence, so I'm grouping them together.
 ```{r}
 p_english_y1 <- ggplot(progress_by_week[course == "English" & year == "Year 1"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
   facet_grid(school_year ~ level, drop = FALSE) +
@@ -628,7 +998,60 @@ ggsave("../output/progress_english.pdf", width = 9, height = 9)
 ggsave("../output/progress_english.png", width = 9, height = 9)
 ```
 
+Did the share of trials change between school years?
 
+```{r}
+ggplot(progress_lockdown[course == "English"], aes(x = school_year, y = prop, fill = chapter_simple, group = school_year)) +
+  facet_grid(level ~ year) +
+  geom_col(colour = NA) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Share of trials",
+       fill = "Chapter",
+       title = "English") +
+  theme_paper
+```
+
+Change between school years:
+```{r}
+ggplot(progress_lockdown[school_year == "19/20" & course == "English"], aes(x = chapter_simple, y = (prop_change * 100), colour = chapter_simple, group = school_year)) +
+  geom_rect(xmin = 0, xmax = 1000, ymin = -2*change_sd, ymax = 2*change_sd, fill = "grey80", colour = NA) +
+  geom_rect(xmin = 0, xmax = 1000, ymin = -change_sd, ymax = change_sd, fill = "grey65", colour = NA) +
+  facet_grid(level ~ year, scales = "free_x") +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(xend = chapter_simple), yend = 0) +
+  geom_point() +
+  scale_y_continuous(limits = c(-40, 40)) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = "Chapter",
+       y = "Change in trial share\n(percentage points)") +
+  theme_paper
+
+ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
+ggsave("../output/progress_change_english.png", width = 9, height = 6)
+```
+
+Perform a chi-square test of homogeneity to determine whether school years are significantly different.
+
+```{r}
+for (y in sort(unique(progress_lockdown$year))) {
+  for (l in levels(progress_lockdown$level)) {
+    d <- progress_lockdown[course == "English" & year == y & level == l]
+    if (nrow(d) > 0) {
+      print(paste(k, y, l, collapse= " "))
+      print(
+        chisq.test(
+          dcast(d, school_year ~ chapter_simple, value.var = "trials", fill = 0)[, school_year := NULL]
+        )
+      )
+    }
+  } 
+}
+```
+
+Conclusion: all tests indicate a difference in proportions between school years (p << 0.001).
 
 
 # Session info

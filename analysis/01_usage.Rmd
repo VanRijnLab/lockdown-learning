@@ -518,7 +518,7 @@ Add exact school closure period in both school years:
 counts_by_hour[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
 counts_by_hour[school_year == "19/20", doy_posix_aligned := doy_posix]
 
-counts_by_hour[, schools_closed := doy_posix_aligned >= date_schools_closed & doy_posix < date_schools_opened]
+counts_by_hour[, schools_closed := doy_posix_aligned >= date_schools_closed & doy_posix_aligned < date_schools_opened]
 ```
 
 

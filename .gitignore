@@ -1,4 +1,5 @@
 data/
+output/*.rds
 render1.R
 render2.R
 

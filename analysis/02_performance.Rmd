@@ -191,7 +191,7 @@ accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy,
 
 Add question type labels:
 ```{r}
-accuracy_by_week[, question_type := ifelse(mcq == TRUE, "Multiple choice", "Open answer")]
+accuracy_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
 ```
 
 
@@ -393,7 +393,7 @@ rt_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posi
 
 Add question type labels:
 ```{r}
-rt_by_week[, question_type := ifelse(mcq == TRUE, "Multiple choice", "Open answer")]
+rt_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
 ```
 
 ```{r}
@@ -553,11 +553,11 @@ plot_grid(
             ncol = 1,
             labels = c("A", "B")),
   p_legend,
-  rel_widths = c(1, .25)
+  rel_widths = c(1, .3)
 )
 
-ggsave("../output/combi_acc_rt.pdf", width = 9, height = 4.5)
-ggsave("../output/combi_acc_rt.png", width = 9, height = 4.5)
+ggsave("../output/combi_acc_rt.pdf", width = 4.5, height = 4)
+ggsave("../output/combi_acc_rt.png", width = 4.5, height = 4)
 ```
 
 

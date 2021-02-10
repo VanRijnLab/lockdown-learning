@@ -878,18 +878,20 @@ ggplot(prop_change_combined, aes(x = prop_change, colour = period)) +
   theme_paper
 ```
 
+```{r}
+prop_change_sd <- prop_change_window[, .(sd = sd(prop_change) * 100), by = .(course, year, level)]
+```
+
+
 Add boundaries based on the typical spread to the change plot:
 ```{r}
-change_sd <- sd(prop_change_window$prop_change) * 100 
-
-ggplot(progress_lockdown[school_year == "19/20" & course == "French"], aes(x = chapter_simple, y = (prop_change * 100), colour = chapter_simple, group = school_year)) +
-  geom_rect(xmin = 0, xmax = 1000, ymin = -2*change_sd, ymax = 2*change_sd, fill = "grey90", colour = NA) +
-  geom_rect(xmin = 0, xmax = 1000, ymin = -change_sd, ymax = change_sd, fill = "grey75", colour = NA) +
+ggplot(progress_lockdown[school_year == "19/20" & course == "French"], aes(colour = chapter_simple)) +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   facet_grid(level ~ year, scales = "free_x") +
   geom_hline(yintercept = 0, lty = 2) +
-  geom_segment(aes(xend = chapter_simple), yend = 0) +
-  geom_point() +
-  scale_y_continuous(limits = c(-25, 25)) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100))) +
   scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
   guides(colour = FALSE) +
   labs(x = "Chapter",
@@ -1016,20 +1018,20 @@ ggplot(progress_lockdown[course == "English"], aes(x = school_year, y = prop, fi
 
 Change between school years:
 ```{r}
-ggplot(progress_lockdown[school_year == "19/20" & course == "English"], aes(x = chapter_simple, y = (prop_change * 100), colour = chapter_simple, group = school_year)) +
-  geom_rect(xmin = 0, xmax = 1000, ymin = -2*change_sd, ymax = 2*change_sd, fill = "grey80", colour = NA) +
-  geom_rect(xmin = 0, xmax = 1000, ymin = -change_sd, ymax = change_sd, fill = "grey65", colour = NA) +
+ggplot(progress_lockdown[school_year == "19/20" & course == "English"], aes(colour = chapter_simple)) +
+  geom_rect(data = prop_change_sd[course == "English"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   facet_grid(level ~ year, scales = "free_x") +
   geom_hline(yintercept = 0, lty = 2) +
-  geom_segment(aes(xend = chapter_simple), yend = 0) +
-  geom_point() +
-  scale_y_continuous(limits = c(-40, 40)) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100))) +
   scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
   guides(colour = FALSE) +
   labs(x = "Chapter",
        y = "Change in trial share\n(percentage points)") +
   theme_paper +
   theme(panel.grid.major.y = element_blank())
+
 
 ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
 ggsave("../output/progress_change_english.png", width = 9, height = 6)

@@ -625,6 +625,7 @@ progress_by_day[, book_title_simple := factor(book_title_simple, levels = c("vmb
 
 # Simplify to three levels
 progress_by_day[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary (havo)",
   grepl("vmbo", book_title) ~ "Pre-vocational (vmbo)",
   grepl("havo", book_title) ~ "General secondary (havo)",
   grepl("vwo", book_title) ~ "Pre-university (vwo)",

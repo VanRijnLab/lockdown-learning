@@ -797,7 +797,7 @@ for (y in sort(unique(progress_lockdown$year))) {
   for (l in levels(progress_lockdown$level)) {
     d <- progress_lockdown[course == "French" & year == y & level == l]
     if (nrow(d) > 0) {
-      print(paste(k, y, l, collapse= " "))
+      print(paste("French", y, l, collapse= " "))
       print(
         chisq.test(
           dcast(d, school_year ~ chapter_simple, value.var = "trials", fill = 0)[, school_year := NULL]
@@ -931,7 +931,7 @@ ggsave("../output/progress_combi_french.png", width = 9, height = 9)
 NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are shown as "O" in the plot.
 They don't seem to fit neatly in the chapter sequence, so I'm grouping them together.
 ```{r}
-p_english_y1 <- ggplot(progress_by_week[course == "English" & year == "Year 1"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+p_english_y1 <- ggplot(progress_by_week[level != "Other"][, level := factor(level)][course == "English" & year == "Year 1"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
   facet_grid(school_year ~ level, drop = FALSE) +
   geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
   geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
@@ -944,14 +944,15 @@ p_english_y1 <- ggplot(progress_by_week[course == "English" & year == "Year 1"],
                      "2020-06-01 02:00:00 CET")),
                    limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
                    date_labels = "%b") +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1), breaks = c(0, .5 , 1)) +
   scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(fill = guide_legend(ncol = 2)) +
   labs(x = NULL,
        y = "Share of trials",
        fill = "Chapter") +
   theme_paper
 
-p_english_y2 <- ggplot(progress_by_week[course == "English" & year == "Year 2"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+p_english_y2 <- ggplot(progress_by_week[level != "Other"][, level := factor(level)][course == "English" & year == "Year 2"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
   facet_grid(school_year ~ level, drop = FALSE) +
   geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
   geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
@@ -964,14 +965,15 @@ p_english_y2 <- ggplot(progress_by_week[course == "English" & year == "Year 2"],
                      "2020-06-01 02:00:00 CET")),
                    limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
                    date_labels = "%b") +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1), breaks = c(0, .5 , 1)) +
   scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(fill = guide_legend(ncol = 2)) +
   labs(x = NULL,
        y = "Share of trials",
        fill = "Chapter") +
   theme_paper
 
-p_english_y3 <- ggplot(progress_by_week[course == "English" & year == "Year 3"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+p_english_y3 <- ggplot(progress_by_week[level != "Other"][, level := factor(level)][course == "English" & year == "Year 3"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
   facet_grid(school_year ~ level, drop = FALSE) +
   geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
   geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
@@ -984,14 +986,15 @@ p_english_y3 <- ggplot(progress_by_week[course == "English" & year == "Year 3"],
                      "2020-06-01 02:00:00 CET")),
                    limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
                    date_labels = "%b") +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1), breaks = c(0, .5 , 1)) +
   scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(fill = guide_legend(ncol = 2)) +
   labs(x = NULL,
        y = "Share of trials",
        fill = "Chapter") +
   theme_paper
 
-p_english_y4 <- ggplot(progress_by_week[course == "English" & year == "Year 4"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
+p_english_y4 <- ggplot(progress_by_week[level != "Other"][, level := factor(level)][course == "English" & year == "Year 4"], aes(x = as.POSIXct(doy_posix_aligned_week), y = prop, fill = chapter_simple, group = school_year)) +
   facet_grid(school_year ~ level, drop = FALSE) +
   geom_col(alpha = 0.75, width = 7*24*60*60, colour = NA) +
   geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -0.01, ymax = 1.01, fill = NA, colour = "black", lty = 2) +
@@ -1004,19 +1007,22 @@ p_english_y4 <- ggplot(progress_by_week[course == "English" & year == "Year 4"],
                      "2020-06-01 02:00:00 CET")),
                    limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
                    date_labels = "%b") +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0,1), breaks = c(0, .5 , 1)) +
   scale_fill_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(fill = guide_legend(ncol = 2)) +
   labs(x = NULL,
        y = "Share of trials",
        fill = "Chapter") +
   theme_paper
 
-plot_grid(p_english_y1, p_english_y2, p_english_y3, p_english_y4,
+p_progress_english <- plot_grid(p_english_y1, p_english_y2, p_english_y3, p_english_y4,
           ncol = 1,
           align = "hv", axis = "tblr",
           labels = c("Year 1", "Year 2", "Year 3", "Year 4"),
           hjust = -0.1,
           scale = .95)
+
+p_progress_english
 
 ggsave("../output/progress_english.pdf", width = 9, height = 9)
 ggsave("../output/progress_english.png", width = 9, height = 9)
@@ -1025,7 +1031,7 @@ ggsave("../output/progress_english.png", width = 9, height = 9)
 Did the share of trials change between school years?
 
 ```{r}
-ggplot(progress_lockdown[course == "English"], aes(x = school_year, y = prop, fill = chapter_simple, group = school_year)) +
+ggplot(progress_lockdown[course == "English" & level != "Other"], aes(x = school_year, y = prop, fill = chapter_simple, group = school_year)) +
   facet_grid(level ~ year) +
   geom_col(colour = NA) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0,1)) +
@@ -1039,10 +1045,10 @@ ggplot(progress_lockdown[course == "English"], aes(x = school_year, y = prop, fi
 
 Change between school years:
 ```{r}
-ggplot(progress_lockdown[school_year == "19/20" & course == "English"], aes(colour = chapter_simple)) +
+p_change_english <- ggplot(progress_lockdown[school_year == "19/20" & course == "English" & level != "Other"], aes(colour = chapter_simple)) +
   facet_grid(year ~ level, scales = "free_x") +
-  geom_rect(data = prop_change_sd[course == "English"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "English"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100))) +
@@ -1053,6 +1059,7 @@ ggplot(progress_lockdown[school_year == "19/20" & course == "English"], aes(colo
   theme_paper +
   theme(panel.grid.major.y = element_blank())
 
+p_change_english 
 
 ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
 ggsave("../output/progress_change_english.png", width = 9, height = 6)
@@ -1065,7 +1072,7 @@ for (y in sort(unique(progress_lockdown$year))) {
   for (l in levels(progress_lockdown$level)) {
     d <- progress_lockdown[course == "English" & year == y & level == l]
     if (nrow(d) > 0) {
-      print(paste(k, y, l, collapse= " "))
+      print(paste("English", y, l, collapse= " "))
       print(
         chisq.test(
           dcast(d, school_year ~ chapter_simple, value.var = "trials", fill = 0)[, school_year := NULL]
@@ -1079,7 +1086,65 @@ for (y in sort(unique(progress_lockdown$year))) {
 Conclusion: all tests indicate a difference in proportions between school years (p << 0.001).
 
 
+Make a combination plot for in the paper:
+```{r}
+plot_grid(p_english_y1, p_english_y2, p_english_y3, p_english_y4, p_change_english,
+          ncol = 1,
+          align = "hv", axis = "tblr",
+          labels = c("Year 1", "Year 2", "Year 3", "Year 4", "Change"),
+          rel_heights = c(1, 1, 1, 1, 1.5),
+          hjust = -0.1,
+          scale = .95)
+
+ggsave("../output/progress_combi_english.pdf", width = 9, height = 11)
+ggsave("../output/progress_combi_english.png", width = 9, height = 11)
+```
+
+
 # Session info
 ```{r}
 sessionInfo()
 ```
+
+
+# Troubleshooting
+
+```{r}
+db <- db_connect()
+responses_learner <- dbGetQuery(db, "SELECT * FROM responses WHERE user_id = 'ca9a77f3-7073-4324-8096-92596465b5e1'")
+db_disconnect(db)
+setDT(responses_learner)
+```
+
+```{r}
+setorder(responses_learner, date, subsession, start_time)
+```
+
+
+Count start of new (sub)sessions:
+```{r}
+responses_learner[start_time < dplyr::lag(start_time, default = Inf), session_counter := 1:.N]
+setnafill(responses_learner, type = "locf", cols = "session_counter")
+```
+
+Add book info:
+```{r}
+responses_learner[book_info[book_type == "Hoofdboek",], on  = "book_info_id", c("method_group", "book_title", "chapter") := .(i.method_group, i.book_title, i.chapter)]
+```
+
+
+```{r}
+ggplot(responses_learner, aes(x = as.POSIXct(date + start_time/1000, origin = "1970-01-01"), y = session_counter, colour = chapter)) +
+  facet_wrap(~lubridate::date(doy), scales = "free_x") +
+  geom_point()
+```
+
+```{r}
+ggplot(responses_learner, aes(x = subsession, y = start_time/60000, group = subsession, colour = as.factor(choices))) +
+  facet_wrap(~lubridate::date(doy)) +
+  geom_line() +
+  labs(x = "Sessie",
+       y = "Tijd (minuten)",
+       colour = "Antwoordopties")
+```
+

@@ -1175,12 +1175,13 @@ Conclusion: all tests indicate a difference in proportions between school years 
 
 Make a combination plot for in the paper:
 ```{r}
-progress_lockdown_english <- progress_lockdown[level != "Other" & school_year == "19/20" & course == "English"][, level_clean := factor(level)]
+progress_lockdown_english <- progress_lockdown[level != "Other" & school_year == "19/20" & course == "English"]
+progress_lockdown_english[, level := factor(level)]
 
 p_change_english_y1 <- ggplot(progress_lockdown_english[year == "Year 1"], aes(colour = chapter_simple)) +
-  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 1"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 1"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  facet_grid(. ~ level, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 1"][,level := factor(level)], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 1"][,level := factor(level)], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
@@ -1197,9 +1198,9 @@ p_change_english_y1 <- ggplot(progress_lockdown_english[year == "Year 1"], aes(c
         plot.background = element_rect(fill = "transparent", colour = NA))
 
 p_change_english_y2 <- ggplot(progress_lockdown_english[year == "Year 2"], aes(colour = chapter_simple)) +
-  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 2"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 2"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  facet_grid(. ~ level, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 2"][,level := factor(level)], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 2"][,level := factor(level)], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
@@ -1216,9 +1217,9 @@ p_change_english_y2 <- ggplot(progress_lockdown_english[year == "Year 2"], aes(c
         plot.background = element_rect(fill = "transparent", colour = NA))
 
 p_change_english_y3 <- ggplot(progress_lockdown_english[year == "Year 3"], aes(colour = chapter_simple)) +
-  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 3"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 3"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  facet_grid(. ~ level, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 3"][,level := factor(level)], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 3"][,level := factor(level)], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
@@ -1235,9 +1236,9 @@ p_change_english_y3 <- ggplot(progress_lockdown_english[year == "Year 3"], aes(c
         plot.background = element_rect(fill = "transparent", colour = NA))
 
 p_change_english_y4 <- ggplot(progress_lockdown_english[year == "Year 4"], aes(colour = chapter_simple)) +
-  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 4"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 4"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  facet_grid(. ~ level, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 4"][,level := factor(level)], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 4"][,level := factor(level)], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +

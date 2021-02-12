@@ -143,9 +143,27 @@ counts[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method ==
 ```
 
 
-## Total number of unique users by course
+## Total number of unique users by course and school year
 ```{r}
 counts[, .(unique_users = length(unique(user))), by = .(course, school_year)]
+```
+
+There was some overlap between courses/school years, so we can't simply add these numbers.
+
+By course:
+```{r}
+counts[, .(unique_users = length(unique(user))), by = .(course)]
+```
+
+
+By school year in the French and English courses:
+```{r}
+counts[course %in% c("French", "English"), .(unique_users = length(unique(user))), by = .(school_year)]
+```
+
+And total number of unique users in the French and English sample across both years:
+```{r}
+counts[course %in% c("French", "English"), .(unique_users = length(unique(user)))]
 ```
 
 
@@ -172,9 +190,10 @@ ggplot(counts, aes(x = trials_user)) +
 ggplot(counts[, .(N = length(unique(doy_posix))), by = c("user", "course")], aes(x = N)) +
   facet_grid(course ~ ., scales = "free_y") +
   geom_histogram(binwidth = 1) +
-  geom_vline(xintercept = (1:7)*7, lty = 2, alpha = 0.5) +
-  labs(x = "Number of unique days by user",
-       y = NULL) +
+  # geom_vline(xintercept = (1:7)*7, lty = 2, alpha = 0.5) +
+  scale_x_continuous(limits = c(0, 21)) +
+  labs(x = "Aantal dagen met leeractiviteit",
+       y = "Aantal leerlingen") +
   theme_paper
 ```
 
@@ -724,6 +743,7 @@ counts_strat_by_day[, book_title_simple := factor(book_title_simple, levels = c(
 
 # Simplify to three levels
 counts_strat_by_day[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary\n(havo)",
   grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
   grepl("havo", book_title) ~ "General secondary\n(havo)",
   grepl("vwo", book_title) ~ "Pre-university\n(vwo)",

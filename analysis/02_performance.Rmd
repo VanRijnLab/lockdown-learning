@@ -926,6 +926,93 @@ ggsave("../output/progress_combi_french.png", width = 9, height = 9)
 ```
 
 
+```{r}
+p_change_french_y1 <- ggplot(progress_lockdown[school_year == "19/20" & course == "French" & year == "Year 1"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level, scales = "free_x") +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-20, 0, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+p_change_french_y2 <- ggplot(progress_lockdown[school_year == "19/20" & course == "French" & year == "Year 2"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level, scales = "free_x") +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-20, 0, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+p_change_french_y3 <- ggplot(progress_lockdown[school_year == "19/20" & course == "French" & year == "Year 3/4"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level, scales = "free_x") +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-20, 0, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+filler_plot <- qplot() + 
+  theme_nothing() + 
+  theme(panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+plot_grid(
+          filler_plot,
+          p_french_y1, filler_plot, p_change_french_y1, filler_plot,
+          p_french_y2, filler_plot, p_change_french_y2, filler_plot, 
+          p_french_y3, filler_plot, p_change_french_y3,
+          ncol = 1,
+          align = "hv", axis = "tblr",
+          labels = c(NA,
+                     "Year 1", NA, NA, NA,
+                     "Year 2", NA, NA, NA,
+                     "Year 3/4", NA, NA),
+          rel_heights = c(.1, 
+                          1, -.2, .75, .1,
+                          1, -.2, .75, .1,
+                          1, -.2, .75),
+          hjust = -0.1,
+          vjust = -0.1,
+          scale = .95)
+
+ggsave("../output/progress_combi_alt_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_combi_alt_french.png", width = 9, height = 9)
+```
+
+
 ### English
 
 NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are shown as "O" in the plot.
@@ -1088,18 +1175,114 @@ Conclusion: all tests indicate a difference in proportions between school years 
 
 Make a combination plot for in the paper:
 ```{r}
-plot_grid(p_english_y1, p_english_y2, p_english_y3, p_english_y4, p_change_english,
+progress_lockdown_english <- progress_lockdown[level != "Other" & school_year == "19/20" & course == "English"][, level_clean := factor(level)]
+
+p_change_english_y1 <- ggplot(progress_lockdown_english[year == "Year 1"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 1"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 1"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-10, 0, 10), limits = c(-20, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+p_change_english_y2 <- ggplot(progress_lockdown_english[year == "Year 2"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 2"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 2"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-10, 0, 10), limits = c(-20, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+p_change_english_y3 <- ggplot(progress_lockdown_english[year == "Year 3"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 3"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 3"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-10, 0, 10), limits = c(-20, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+p_change_english_y4 <- ggplot(progress_lockdown_english[year == "Year 4"], aes(colour = chapter_simple)) +
+  facet_grid(. ~ level_clean, scales = "free_x", drop = FALSE) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 4"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "English" & level != "Other" & year == "Year 4"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
+  geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
+  scale_y_continuous(breaks = c(-10, 0, 10), limits = c(-20, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
+  guides(colour = FALSE) +
+  labs(x = NULL,
+       y = "Change") +
+  theme_paper +
+  theme(panel.grid.major.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+filler_plot <- qplot() + 
+  theme_nothing() + 
+  theme(panel.background = element_rect(fill = "transparent", colour = NA),
+        plot.background = element_rect(fill = "transparent", colour = NA))
+
+plot_grid(
+          filler_plot,
+          p_english_y1, filler_plot, p_change_english_y1, filler_plot,
+          p_english_y2, filler_plot, p_change_english_y2, filler_plot, 
+          p_english_y3, filler_plot, p_change_english_y3, filler_plot,
+          p_english_y4, filler_plot, p_change_english_y4,
           ncol = 1,
           align = "hv", axis = "tblr",
-          labels = c("Year 1", "Year 2", "Year 3", "Year 4", "Change"),
-          rel_heights = c(1, 1, 1, 1, 1.5),
+          labels = c(NA,
+                     "Year 1", NA, NA, NA,
+                     "Year 2", NA, NA, NA,
+                     "Year 3", NA, NA, NA,
+                     "Year 4", NA, NA),
+          rel_heights = c(.1, 
+                          1, -.2, .75, .1,
+                          1, -.2, .75, .1,
+                          1, -.2, .75, .1,
+                          1, -.2, .75),
           hjust = -0.1,
+          vjust = -0.1,
           scale = .95)
 
-ggsave("../output/progress_combi_english.pdf", width = 9, height = 11)
-ggsave("../output/progress_combi_english.png", width = 9, height = 11)
+ggsave("../output/progress_combi_alt_english.pdf", width = 9, height = 11)
+ggsave("../output/progress_combi_alt_english.png", width = 9, height = 11)
 ```
-
 
 # Session info
 ```{r}

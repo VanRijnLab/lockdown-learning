@@ -929,12 +929,12 @@ ggsave("../output/progress_combi_french.png", width = 9, height = 9)
 ```{r}
 p_change_french_y1 <- ggplot(progress_lockdown[school_year == "19/20" & course == "French" & year == "Year 1"], aes(colour = chapter_simple)) +
   facet_grid(. ~ level, scales = "free_x") +
-  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French" & year == "Year 1"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French" & year == "Year 1"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
-  scale_y_continuous(breaks = c(-20, 0, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_y_continuous(breaks = c(-20, 0, 20), limits = c(-30, 30), labels = scales::number_format(suffix = " pp")) +
   scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
   guides(colour = FALSE) +
   labs(x = NULL,
@@ -948,12 +948,12 @@ p_change_french_y1 <- ggplot(progress_lockdown[school_year == "19/20" & course =
 
 p_change_french_y2 <- ggplot(progress_lockdown[school_year == "19/20" & course == "French" & year == "Year 2"], aes(colour = chapter_simple)) +
   facet_grid(. ~ level, scales = "free_x") +
-  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French" & year == "Year 2"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French" & year == "Year 2"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
-  scale_y_continuous(breaks = c(-20, 0, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_y_continuous(breaks = c(-20, 0, 20),  limits = c(-30, 30), labels = scales::number_format(suffix = " pp")) +
   scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
   guides(colour = FALSE) +
   labs(x = NULL,
@@ -967,12 +967,12 @@ p_change_french_y2 <- ggplot(progress_lockdown[school_year == "19/20" & course =
 
 p_change_french_y3 <- ggplot(progress_lockdown[school_year == "19/20" & course == "French" & year == "Year 3/4"], aes(colour = chapter_simple)) +
   facet_grid(. ~ level, scales = "free_x") +
-  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
-  geom_rect(data = prop_change_sd[course == "French"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French" & year == "Year 3/4"], aes(ymin = -2*sd, ymax = 2*sd), xmin = 0, xmax = 1000, fill = "grey90", colour = NA) +
+  geom_rect(data = prop_change_sd[course == "French" & year == "Year 3/4"], aes(ymin = -sd, ymax = sd), xmin = 0, xmax = 100, fill = "grey75", colour = NA) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_segment(aes(x = chapter_simple, xend = chapter_simple, y = (prop_change * 100)), yend = 0, alpha = .75) +
   geom_point(aes(x = chapter_simple, y = (prop_change * 100)), alpha = .75) +
-  scale_y_continuous(breaks = c(-20, 0, 20), labels = scales::number_format(suffix = " pp")) +
+  scale_y_continuous(breaks = c(-20, 0, 20),  limits = c(-30, 30), labels = scales::number_format(suffix = " pp")) +
   scale_colour_viridis_d(direction = -1, na.translate = FALSE) +
   guides(colour = FALSE) +
   labs(x = NULL,

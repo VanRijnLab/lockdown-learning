@@ -681,8 +681,8 @@ plot_grid(
   ncol = 2,
   rel_widths = c(1, .15))
 
-ggsave("../output/combi_heatmap.pdf", width = 9, height = 4)
-ggsave("../output/combi_heatmap.png", width = 9, height = 4)
+ggsave("../output/combi_heatmap.pdf", width = 9, height = 4.5)
+ggsave("../output/combi_heatmap.png", width = 9, height = 4.5)
 ```
 
 

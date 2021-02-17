@@ -1,5 +1,6 @@
 data/
 output/*.rds
+analysis/*_files/
 render1.R
 render2.R
 

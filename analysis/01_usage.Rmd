@@ -861,6 +861,74 @@ ggsave("../output/trial_hist_french_level.pdf", width = 9, height = 5)
 ggsave("../output/trial_hist_french_level.png", width = 9, height = 5)
 ```
 
+There are two reasons why total trial count may increase: there are more active users, or active users complete more trials.
+Given the fixed curriculum, the first reason seems more plausible.
+We can confirm this by plotting the weekly number of trials per user.
+
+```{r}
+users_strat <- copy(counts_strat)
+
+users_strat[, book_title_simple := stringr::str_sub(book_title, 3, -10)]
+users_strat[, book_title_simple := factor(book_title_simple, levels = c("vmbo b/lwoo", "vmbo b", "vmbo bk", "vmbo k", "vmbo kgt", "vmbo-gt", "vmbo gt", "vmbo-gt/havo", "vmbo (t)hv", "havo", "havo vwo", "vwo"))]
+
+# Simplify to three levels
+users_strat[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary\n(havo)",
+  grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
+  grepl("havo", book_title) ~ "General secondary\n(havo)",
+  grepl("vwo", book_title) ~ "Pre-university\n(vwo)",
+  TRUE ~ "Other")]
+users_strat[, level := factor(level, levels = c("Other", "Pre-vocational\n(vmbo)", "General secondary\n(havo)", "Pre-university\n(vwo)"))]
+
+users_strat[, year := dplyr::case_when(
+  method_group == "Leerjaar 1 (5e Ed.)" ~ "Year 1",
+  method_group == "Leerjaar 2 (5e Ed.)" ~ "Year 2",
+  method_group == "Leerjaar 3 (5e Ed.)" ~ "Year 3",
+  method_group == "Leerjaar 3/4 (5e Ed.)" ~ "Year 3/4",
+  method_group == "Leerjaar 4 (5e Ed.)" ~ "Year 4",
+  method_group == "Tweede Fase (6e Ed.)" ~ "Tweede Fase",
+  TRUE ~ "Other")]
+
+users_strat[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
+users_strat[school_year == "19/20", doy_posix_aligned := doy_posix]
+users_strat[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
+users_strat_by_week <- users_strat[, .(users_week_level = .N), by = .(school_year, course, year, level, doy_posix_aligned_week)]
+```
+
+```{r}
+counts_strat_by_day <- counts_strat_by_day[users_strat_by_week, on = c("school_year", "course", "year", "level", "doy_posix_aligned_week")][, trials_per_user_week := trials_total_week_level / users_week_level]
+```
+
+```{r}
+ggplot(counts_strat_by_day[course == "French"], 
+       aes(group = school_year, colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -2e5, ymax = 2.2e6, fill = "grey92", colour = "grey50", lty = 2) +
+  geom_ribbon(aes(x = doy_posix_aligned, ymin = 0, ymax = trials_per_user_week, ), alpha = .2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(expand = c(0, 0), labels = number_format) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Trials per user per week",
+       colour = "School year",
+       fill = "School year") +
+  theme_paper
+
+```
+
+As expected, there is essentially no change in the number of trials each user completes, so the increased trial count that we see comes from more users being active.
+
+
+
 ### English
 
 ```{r}
@@ -937,6 +1005,33 @@ ggsave("../output/trial_hist_english_level.pdf", width = 9, height = 5)
 ggsave("../output/trial_hist_english_level.png", width = 9, height = 5)
 ```
 
+Also plot the weekly number of trials per user.
+As with French, this number stays more or less constant:
+```{r}
+ggplot(counts_strat_by_day[course == "English"], 
+       aes(group = school_year, colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = -2e5, ymax = 2.2e6, fill = "grey92", colour = "grey50", lty = 2) +
+  geom_ribbon(aes(x = doy_posix_aligned, ymin = 0, ymax = trials_per_user_week, ), alpha = .2) +
+  scale_x_datetime(expand = c(0, 0), 
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(expand = c(0, 0), labels = number_format) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Trials per user per week",
+       colour = "School year",
+       fill = "School year") +
+  theme_paper
+
+```
 
 
 ## Question type

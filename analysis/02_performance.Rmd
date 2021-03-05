@@ -121,6 +121,7 @@ Note that we cannot distinguish between NL-X and X-X, since we only know the lan
 
 ## Response accuracy
 
+### Whole population
 
 ```{r}
 db <- db_connect()
@@ -181,10 +182,16 @@ accuracy[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
 ```
 
 ```{r}
-accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
-
+accuracy_by_week_and_user <- accuracy[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
 accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
+```
+
+
+```{r}
+# accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
+# accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+#                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
 ```
 
 Add question type labels:
@@ -222,13 +229,325 @@ p_acc <- ggplot(accuracy_by_week[(course == "English" & mcq == TRUE) | course ==
          fill = guide_legend(order = 1),
          lty = guide_legend(order = 2)) +
   theme_paper
-
 p_acc
-
 ggsave("../output/acc_by_question_type.pdf", width = 9, height = 3)
 ggsave("../output/acc_by_question_type.png", width = 9, height = 3)
 ```
 
+
+### By level and year
+
+```{r}
+db <- db_connect()
+correct_strat <- dbGetQuery(db, 
+                      "SELECT r.method AS 'method',
+                      r.book_info_id AS 'book_info_id',
+                      DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                      r.user_id AS 'user',
+                      r.choices > 1 AS 'mcq',
+                      r.correct AS 'correct',
+                      COUNT(*) AS 'n'
+                      FROM 'responses' r
+                      WHERE r.study == 0
+                      GROUP BY r.method,
+                      r.book_info_id,
+                      DATE(r.date + 3600, 'unixepoch'),
+                      r.user_id,
+                      r.choices > 1,
+                      r.correct"
+)
+setDT(correct_strat)
+db_disconnect(db)
+```
+
+Fill in missing rows (where all trials on a day were correct/incorrect):
+```{r}
+correct_strat <- tidyr::complete(correct_strat, tidyr::nesting(method, book_info_id, doy, user, mcq), correct, fill = list(n = 0))
+setDT(correct_strat)
+```
+
+```{r}
+correct_strat[, mcq := as.logical(mcq)]
+```
+
+Add book information:
+```{r}
+db <- db_connect()
+book_info <- dbGetQuery(db, "SELECT DISTINCT * FROM 'book_info'")
+db_disconnect(db)
+
+setDT(book_info)
+```
+
+```{r}
+correct_strat[book_info[book_type == "Hoofdboek",], on  = "book_info_id", c("method_group", "book_title") := .(i.method_group, i.book_title)]
+```
+
+Add sensible course names:
+```{r}
+correct_strat[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+```
+
+Add a school year column (cutoff date: 1 August):
+```{r}
+correct_strat[, doy_posix := as.POSIXct(doy)]
+correct_strat[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
+```
+
+Simplify level names:
+```{r}
+# Keep all distinctions
+correct_strat[, book_title_simple := stringr::str_sub(book_title, 3, -10)]
+correct_strat[, book_title_simple := factor(book_title_simple, levels = c("vmbo b/lwoo", "vmbo b", "vmbo bk", "vmbo k", "vmbo kgt", "vmbo-gt", "vmbo gt", "vmbo-gt/havo", "vmbo (t)hv", "havo", "havo vwo", "vwo"))]
+
+# Simplify to three levels
+correct_strat[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary\n(havo)",
+  grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
+  grepl("havo", book_title) ~ "General secondary\n(havo)",
+  grepl("vwo", book_title) ~ "Pre-university\n(vwo)",
+  TRUE ~ "Other")]
+correct_strat[, level := factor(level, levels = c("Other", "Pre-vocational\n(vmbo)", "General secondary\n(havo)", "Pre-university\n(vwo)"))]
+```
+
+Simplify year names:
+```{r}
+correct_strat[, year := dplyr::case_when(
+  method_group == "Leerjaar 1 (5e Ed.)" ~ "Year 1",
+  method_group == "Leerjaar 2 (5e Ed.)" ~ "Year 2",
+  method_group == "Leerjaar 3 (5e Ed.)" ~ "Year 3",
+  method_group == "Leerjaar 3/4 (5e Ed.)" ~ "Year 3/4",
+  method_group == "Leerjaar 4 (5e Ed.)" ~ "Year 4",
+  method_group == "Tweede Fase (6e Ed.)" ~ "Tweede Fase",
+  TRUE ~ "Other")]
+```
+
+Consolidate by day:
+```{r}
+accuracy_strat <- correct_strat[, .(accuracy = n[correct == 1]/sum(n), n = sum(n)), by = .(school_year, doy_posix, course, level, year, user, mcq)]
+```
+
+Align school years:
+```{r}
+accuracy_strat[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
+accuracy_strat[school_year == "19/20", doy_posix_aligned := doy_posix]
+```
+
+Use cut.Date() to bin dates by week. Each day is assigned the date of the most recent Monday.
+```{r}
+accuracy_strat[, doy_posix_week := cut.POSIXt(doy_posix, "week")]
+accuracy_strat[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
+```
+
+```{r}
+accuracy_strat_by_week_and_user <- accuracy_strat[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, level, year, user, mcq)]
+accuracy_strat_by_week <- accuracy_strat_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, level, year, mcq)]
+```
+
+Add question type labels:
+```{r}
+accuracy_strat_by_week_and_user[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+accuracy_strat_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+How many unique users per group?
+```{r}
+accuracy_strat_by_week_and_user[, .(unique_users = length(unique(user))),  by = .(course, level, year, school_year, question_type)]
+```
+
+
+Plot response accuracy by week (mean +/- 1 SE).
+```{r}
+p_acc_level_year <- ggplot(accuracy_strat_by_week[course == "French" & level != "Other",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.4, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_level_year
+
+ggsave("../output/acc_by_question_type_french_level_year.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_french_level_year.png", width = 9, height = 5)
+```
+
+```{r}
+p_acc_level_year <- ggplot(accuracy_strat_by_week[course == "English" & level != "Other" & question_type == "Multiple\nchoice",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line() +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.4, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_level_year
+
+ggsave("../output/acc_by_question_type_english_level_year.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_english_level_year.png", width = 9, height = 5)
+```
+
+### By level
+
+```{r}
+accuracy_level_by_week_and_user <- accuracy_strat[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, level, user, mcq)]
+
+accuracy_level_by_week <- accuracy_level_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, level, mcq)]
+```
+
+Add question type labels:
+```{r}
+accuracy_level_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+How many users in each group?
+```{r}
+accuracy_level_by_week_and_user[, .(unique_users = length(unique(user))),  by = .(course, level, school_year, mcq)]
+```
+
+
+Plot response accuracy by week (mean +/- 1 SE).
+```{r}
+p_acc_level <- ggplot(accuracy_level_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & level != "Other",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.6, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_level
+
+ggsave("../output/acc_by_question_type_level.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_level.png", width = 9, height = 5)
+```
+
+
+### By year
+
+```{r}
+accuracy_year_by_week_and_user <- accuracy_strat[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, year, user, mcq)]
+
+accuracy_year_by_week <- accuracy_year_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, year, mcq)]
+```
+
+Add question type labels:
+```{r}
+accuracy_year_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+How many users in each group?
+```{r}
+accuracy_year_by_week_and_user[, .(unique_users = length(unique(user))),  by = .(course, year, school_year, mcq)]
+```
+
+
+Plot response accuracy by week (mean +/- 1 SE).
+```{r}
+p_acc_year <- ggplot(accuracy_year_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & year != "Other",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(year ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.6, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_year
+
+ggsave("../output/acc_by_question_type_year.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_year.png", width = 9, height = 5)
+```
+
+
+
+### Regression model
 
 Fit a mixed effects model to the daily accuracy data:
 ```{r}
@@ -329,6 +648,7 @@ ggplot(accuracy_mean, aes(x = period, y = accuracy, colour = school_year, lty = 
 db <- db_connect()
 rt <- dbGetQuery(db, 
                  "SELECT r.method AS 'method',
+                  r.book_info_id AS 'book_info_id',
                   DATE(r.date + 3600, 'unixepoch') AS 'doy',
                   r.user_id AS 'user',
                   r.choices > 1 AS 'mcq',
@@ -348,6 +668,7 @@ doys[, doy_posix_week := cut.POSIXt(as.POSIXct(doy), "week")]
 doys[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
 doys[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
 doys[school_year == "19/20", doy_posix_aligned := doy_posix]
+doys[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
 doys[, period := dplyr::case_when(
   doy_posix_aligned >= date_schools_opened ~ "post-lockdown",
   doy_posix_aligned >= date_schools_closed & doy_posix_aligned < date_schools_opened ~ "during-lockdown",
@@ -377,10 +698,13 @@ rt <- rt[rt > 0]
 ```
 
 
-```{r}
-rt_med <- rt[, .(rt_median = median(rt)), by = .(period, school_year, mcq, user, course, doy_posix_week)]
 
-rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(period, school_year, mcq, course, doy_posix_week)]
+### Whole population
+
+```{r}
+rt_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, doy_posix_week)]
+
+rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, doy_posix_week)]
 ```
 
 Overlap the two school years:
@@ -416,7 +740,8 @@ p_rt <- ggplot(rt_by_week[(course == "English" & mcq == TRUE) | course == "Frenc
                      "2020-06-01 02:00:00 CET")),
                    limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
                    date_labels = "%b") +
-  scale_y_continuous(limits = c(1.7, 3.7), labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1.7, 3.7)) +
   scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
   scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
   labs(x = NULL,
@@ -435,11 +760,271 @@ ggsave("../output/rt_by_question_type.pdf", width = 9, height = 3)
 ggsave("../output/rt_by_question_type.png", width = 9, height = 3)
 ```
 
+### By level and year
+
+Add book info:
+```{r}
+rt[book_info[book_type == "Hoofdboek",], on  = "book_info_id", c("method_group", "book_title") := .(i.method_group, i.book_title)]
+```
+
+Simplify level names:
+```{r}
+# Keep all distinctions
+rt[, book_title_simple := stringr::str_sub(book_title, 3, -10)]
+rt[, book_title_simple := factor(book_title_simple, levels = c("vmbo b/lwoo", "vmbo b", "vmbo bk", "vmbo k", "vmbo kgt", "vmbo-gt", "vmbo gt", "vmbo-gt/havo", "vmbo (t)hv", "havo", "havo vwo", "vwo"))]
+
+# Simplify to three levels
+rt[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary\n(havo)",
+  grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
+  grepl("havo", book_title) ~ "General secondary\n(havo)",
+  grepl("vwo", book_title) ~ "Pre-university\n(vwo)",
+  TRUE ~ "Other")]
+rt[, level := factor(level, levels = c("Other", "Pre-vocational\n(vmbo)", "General secondary\n(havo)", "Pre-university\n(vwo)"))]
+```
+
+Simplify year names:
+```{r}
+rt[, year := dplyr::case_when(
+  method_group == "Leerjaar 1 (5e Ed.)" ~ "Year 1",
+  method_group == "Leerjaar 2 (5e Ed.)" ~ "Year 2",
+  method_group == "Leerjaar 3 (5e Ed.)" ~ "Year 3",
+  method_group == "Leerjaar 3/4 (5e Ed.)" ~ "Year 3/4",
+  method_group == "Leerjaar 4 (5e Ed.)" ~ "Year 4",
+  method_group == "Tweede Fase (6e Ed.)" ~ "Tweede Fase",
+  TRUE ~ "Other")]
+```
+
+
+```{r}
+rt_strat_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, level, year, doy_posix_week)]
+
+rt_strat_by_week <- rt_strat_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, level, year, doy_posix_week)]
+```
+
+Overlap the two school years:
+```{r}
+rt_strat_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_strat_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type labels:
+```{r}
+rt_strat_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+```{r}
+rt_strat_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
+
+
+Plot response time by week (mean +/- 1 SE).
+```{r}
+p_rt_level_year <- ggplot(rt_strat_by_week[course == "French",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 4)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_level_year
+
+ggsave("../output/rt_by_question_type_french_level_year.pdf", width = 9, height = 3)
+ggsave("../output/rt_by_question_type_french_level_year.png", width = 9, height = 3)
+```
+
+```{r}
+p_rt_level_year <- ggplot(rt_strat_by_week[course == "English" & question_type == "Multiple\nchoice" & level != "Other",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 4)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_level_year
+
+ggsave("../output/rt_by_question_type_english_level_year.pdf", width = 9, height = 3)
+ggsave("../output/rt_by_question_type_english_level_year.png", width = 9, height = 3)
+```
+
+### By level
+
+```{r}
+rt_level_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, level, doy_posix_week)]
+
+rt_level_by_week <- rt_level_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, level, doy_posix_week)]
+```
+
+Overlap the two school years:
+```{r}
+rt_level_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_level_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type labels:
+```{r}
+rt_level_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+```{r}
+rt_level_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
+
+
+Plot response time by week (mean +/- 1 SE).
+```{r}
+p_rt_level <- ggplot(rt_level_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & level != "Other",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 6)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_level
+
+ggsave("../output/rt_by_question_type_level.pdf", width = 9, height = 5)
+ggsave("../output/rt_by_question_type_level.png", width = 9, height = 5)
+```
+
+### By year
+
+```{r}
+rt_year_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, year, doy_posix_week)]
+
+rt_year_by_week <- rt_year_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, year, doy_posix_week)]
+```
+
+Overlap the two school years:
+```{r}
+rt_year_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_year_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type labels:
+```{r}
+rt_year_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+```{r}
+rt_year_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
+
+
+Plot response time by week (mean +/- 1 SE).
+```{r}
+p_rt_year <- ggplot(rt_year_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & year != "Other",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(year ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 4)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_year
+
+ggsave("../output/rt_by_question_type_year.pdf", width = 9, height = 5)
+ggsave("../output/rt_by_question_type_year.png", width = 9, height = 5)
+```
+
+
+### Regression model
+
+```{r}
+rt_model_dat <- rt[, .(rt_median = median(rt)), by = .(course, school_year, period, doy_posix, mcq, user)]
+```
+
 Fit a generalised linear mixed effects model (assuming a Gamma distribution for RT and an identity link function; Lo & Andrew, 2015) to the daily median RT:
 ```{r}
 if(!file.exists("../output/m_rt_fit.rds")) {
   m_rt <- glmer(rt_median ~ period*school_year*mcq + (1 | user) + (1 | course),
-                 data = rt_med[(course == "English" & mcq == TRUE) | course == "French",],
+                 data = rt_model_dat[(course == "English" & mcq == TRUE) | course == "French",],
                  family = Gamma(link = "identity"),
                  nAGQ = 0,
                  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e6)))
@@ -498,7 +1083,7 @@ ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = 
 
 Empirical means:
 ```{r}
-rt_mean <- rt_med[(course == "English" & mcq == TRUE) | course == "French", .(rt = mean(rt_median)), by = .(period, school_year, mcq, user, course)][, .(rt = mean(rt), rt_sd = sd(rt)), by = .(period, school_year, mcq, course)]
+rt_mean <- rt_model_dat[(course == "English" & mcq == TRUE) | course == "French", .(rt = mean(rt_median)), by = .(period, school_year, mcq, user, course)][, .(rt = mean(rt), rt_sd = sd(rt)), by = .(period, school_year, mcq, course)]
 rt_mean[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
 rt_mean
 ```

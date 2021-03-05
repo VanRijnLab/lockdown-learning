@@ -1,7 +1,7 @@
 SlimStampen Performance During Lockdown
 ================
 Maarten van der Velde
-Last updated: 2021-02-17
+Last updated: 2021-03-04
 
 # Setup
 
@@ -221,6 +221,8 @@ and X-X, since we only know the language of the answer.
 
 ## Response accuracy
 
+### Whole population
+
 ``` r
 db <- db_connect()
 correct <- dbGetQuery(db, 
@@ -289,10 +291,15 @@ accuracy[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
 ```
 
 ``` r
-accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
-
+accuracy_by_week_and_user <- accuracy[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
 accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
+```
+
+``` r
+# accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
+# accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+#                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
 ```
 
 Add question type
@@ -333,13 +340,12 @@ p_acc <- ggplot(accuracy_by_week[(course == "English" & mcq == TRUE) | course ==
          fill = guide_legend(order = 1),
          lty = guide_legend(order = 2)) +
   theme_paper
-
 p_acc
 ```
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ``` r
 ggsave("../output/acc_by_question_type.pdf", width = 9, height = 3)
@@ -352,6 +358,615 @@ ggsave("../output/acc_by_question_type.png", width = 9, height = 3)
 ```
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
+
+### By level and year
+
+``` r
+db <- db_connect()
+correct_strat <- dbGetQuery(db, 
+                      "SELECT r.method AS 'method',
+                      r.book_info_id AS 'book_info_id',
+                      DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                      r.user_id AS 'user',
+                      r.choices > 1 AS 'mcq',
+                      r.correct AS 'correct',
+                      COUNT(*) AS 'n'
+                      FROM 'responses' r
+                      WHERE r.study == 0
+                      GROUP BY r.method,
+                      r.book_info_id,
+                      DATE(r.date + 3600, 'unixepoch'),
+                      r.user_id,
+                      r.choices > 1,
+                      r.correct"
+)
+setDT(correct_strat)
+db_disconnect(db)
+```
+
+Fill in missing rows (where all trials on a day were
+correct/incorrect):
+
+``` r
+correct_strat <- tidyr::complete(correct_strat, tidyr::nesting(method, book_info_id, doy, user, mcq), correct, fill = list(n = 0))
+setDT(correct_strat)
+```
+
+``` r
+correct_strat[, mcq := as.logical(mcq)]
+```
+
+Add book information:
+
+``` r
+db <- db_connect()
+book_info <- dbGetQuery(db, "SELECT DISTINCT * FROM 'book_info'")
+db_disconnect(db)
+
+setDT(book_info)
+```
+
+``` r
+correct_strat[book_info[book_type == "Hoofdboek",], on  = "book_info_id", c("method_group", "book_title") := .(i.method_group, i.book_title)]
+```
+
+Add sensible course
+names:
+
+``` r
+correct_strat[, course := ifelse(method == "Grandes Lignes", "French", ifelse(method == "Stepping Stones", "English", "German"))]
+```
+
+Add a school year column (cutoff date: 1 August):
+
+``` r
+correct_strat[, doy_posix := as.POSIXct(doy)]
+correct_strat[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
+```
+
+Simplify level names:
+
+``` r
+# Keep all distinctions
+correct_strat[, book_title_simple := stringr::str_sub(book_title, 3, -10)]
+correct_strat[, book_title_simple := factor(book_title_simple, levels = c("vmbo b/lwoo", "vmbo b", "vmbo bk", "vmbo k", "vmbo kgt", "vmbo-gt", "vmbo gt", "vmbo-gt/havo", "vmbo (t)hv", "havo", "havo vwo", "vwo"))]
+
+# Simplify to three levels
+correct_strat[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary\n(havo)",
+  grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
+  grepl("havo", book_title) ~ "General secondary\n(havo)",
+  grepl("vwo", book_title) ~ "Pre-university\n(vwo)",
+  TRUE ~ "Other")]
+correct_strat[, level := factor(level, levels = c("Other", "Pre-vocational\n(vmbo)", "General secondary\n(havo)", "Pre-university\n(vwo)"))]
+```
+
+Simplify year names:
+
+``` r
+correct_strat[, year := dplyr::case_when(
+  method_group == "Leerjaar 1 (5e Ed.)" ~ "Year 1",
+  method_group == "Leerjaar 2 (5e Ed.)" ~ "Year 2",
+  method_group == "Leerjaar 3 (5e Ed.)" ~ "Year 3",
+  method_group == "Leerjaar 3/4 (5e Ed.)" ~ "Year 3/4",
+  method_group == "Leerjaar 4 (5e Ed.)" ~ "Year 4",
+  method_group == "Tweede Fase (6e Ed.)" ~ "Tweede Fase",
+  TRUE ~ "Other")]
+```
+
+Consolidate by
+day:
+
+``` r
+accuracy_strat <- correct_strat[, .(accuracy = n[correct == 1]/sum(n), n = sum(n)), by = .(school_year, doy_posix, course, level, year, user, mcq)]
+```
+
+Align school
+years:
+
+``` r
+accuracy_strat[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
+accuracy_strat[school_year == "19/20", doy_posix_aligned := doy_posix]
+```
+
+Use cut.Date() to bin dates by week. Each day is assigned the date of
+the most recent Monday.
+
+``` r
+accuracy_strat[, doy_posix_week := cut.POSIXt(doy_posix, "week")]
+accuracy_strat[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
+```
+
+``` r
+accuracy_strat_by_week_and_user <- accuracy_strat[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, level, year, user, mcq)]
+accuracy_strat_by_week <- accuracy_strat_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, level, year, mcq)]
+```
+
+Add question type
+labels:
+
+``` r
+accuracy_strat_by_week_and_user[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+accuracy_strat_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+How many unique users per
+group?
+
+``` r
+accuracy_strat_by_week_and_user[, .(unique_users = length(unique(user))),  by = .(course, level, year, school_year, question_type)]
+```
+
+    ##      course                     level        year school_year
+    ##  1:  French    Pre-vocational\n(vmbo)    Year 3/4       18/19
+    ##  2:  French    Pre-vocational\n(vmbo)    Year 3/4       18/19
+    ##  3:  French    Pre-vocational\n(vmbo)    Year 3/4       19/20
+    ##  4:  French    Pre-vocational\n(vmbo)    Year 3/4       19/20
+    ##  5:  French General secondary\n(havo)      Year 1       18/19
+    ##  6:  French General secondary\n(havo)      Year 1       18/19
+    ##  7:  French General secondary\n(havo)      Year 1       19/20
+    ##  8:  French General secondary\n(havo)      Year 1       19/20
+    ##  9:  French General secondary\n(havo)    Year 3/4       18/19
+    ## 10:  French General secondary\n(havo)    Year 3/4       18/19
+    ## 11:  French General secondary\n(havo)    Year 3/4       19/20
+    ## 12:  French General secondary\n(havo)    Year 3/4       19/20
+    ## 13:  French     Pre-university\n(vwo)      Year 1       18/19
+    ## 14:  French     Pre-university\n(vwo)      Year 1       18/19
+    ## 15:  French     Pre-university\n(vwo)      Year 1       19/20
+    ## 16:  French     Pre-university\n(vwo)      Year 1       19/20
+    ## 17:  French     Pre-university\n(vwo)    Year 3/4       18/19
+    ## 18:  French     Pre-university\n(vwo)    Year 3/4       18/19
+    ## 19:  French     Pre-university\n(vwo)    Year 3/4       19/20
+    ## 20:  French     Pre-university\n(vwo)    Year 3/4       19/20
+    ## 21:  French General secondary\n(havo)      Year 2       18/19
+    ## 22:  French General secondary\n(havo)      Year 2       18/19
+    ## 23:  French General secondary\n(havo)      Year 2       19/20
+    ## 24:  French General secondary\n(havo)      Year 2       19/20
+    ## 25:  French     Pre-university\n(vwo)      Year 2       18/19
+    ## 26:  French     Pre-university\n(vwo)      Year 2       18/19
+    ## 27:  French     Pre-university\n(vwo)      Year 2       19/20
+    ## 28:  French     Pre-university\n(vwo)      Year 2       19/20
+    ## 29:  French    Pre-vocational\n(vmbo)      Year 1       18/19
+    ## 30:  French    Pre-vocational\n(vmbo)      Year 1       18/19
+    ## 31:  French    Pre-vocational\n(vmbo)      Year 1       19/20
+    ## 32:  French    Pre-vocational\n(vmbo)      Year 1       19/20
+    ## 33:  French    Pre-vocational\n(vmbo)      Year 2       18/19
+    ## 34:  French    Pre-vocational\n(vmbo)      Year 2       18/19
+    ## 35:  French    Pre-vocational\n(vmbo)      Year 2       19/20
+    ## 36:  French    Pre-vocational\n(vmbo)      Year 2       19/20
+    ## 37:  German General secondary\n(havo) Tweede Fase       18/19
+    ## 38:  German General secondary\n(havo) Tweede Fase       18/19
+    ## 39:  German     Pre-university\n(vwo) Tweede Fase       18/19
+    ## 40:  German     Pre-university\n(vwo) Tweede Fase       18/19
+    ## 41:  German     Pre-university\n(vwo) Tweede Fase       19/20
+    ## 42:  German     Pre-university\n(vwo) Tweede Fase       19/20
+    ## 43:  German General secondary\n(havo) Tweede Fase       19/20
+    ## 44:  German General secondary\n(havo) Tweede Fase       19/20
+    ## 45: English    Pre-vocational\n(vmbo)      Year 1       18/19
+    ## 46: English    Pre-vocational\n(vmbo)      Year 1       19/20
+    ## 47: English    Pre-vocational\n(vmbo)      Year 3       18/19
+    ## 48: English    Pre-vocational\n(vmbo)      Year 3       19/20
+    ## 49: English General secondary\n(havo)      Year 2       18/19
+    ## 50: English General secondary\n(havo)      Year 2       19/20
+    ## 51: English     Pre-university\n(vwo)      Year 3       18/19
+    ## 52: English     Pre-university\n(vwo)      Year 3       19/20
+    ## 53: English    Pre-vocational\n(vmbo)      Year 4       18/19
+    ## 54: English    Pre-vocational\n(vmbo)      Year 4       19/20
+    ## 55: English     Pre-university\n(vwo)      Year 1       18/19
+    ## 56: English     Pre-university\n(vwo)      Year 1       19/20
+    ## 57: English                     Other      Year 2       18/19
+    ## 58: English                     Other      Year 2       19/20
+    ## 59: English General secondary\n(havo)      Year 3       18/19
+    ## 60: English General secondary\n(havo)      Year 3       19/20
+    ## 61: English                     Other      Year 3       18/19
+    ## 62: English                     Other      Year 3       19/20
+    ## 63: English    Pre-vocational\n(vmbo)      Year 2       18/19
+    ## 64: English    Pre-vocational\n(vmbo)      Year 2       19/20
+    ## 65: English                     Other      Year 1       18/19
+    ## 66: English                     Other      Year 1       19/20
+    ## 67: English     Pre-university\n(vwo)      Year 2       18/19
+    ## 68: English     Pre-university\n(vwo)      Year 2       19/20
+    ## 69: English General secondary\n(havo)      Year 1       18/19
+    ## 70: English General secondary\n(havo)      Year 1       19/20
+    ## 71: English     Pre-university\n(vwo)      Year 1       18/19
+    ## 72: English     Pre-university\n(vwo)      Year 1       19/20
+    ## 73: English                     Other      Year 1       18/19
+    ## 74: English                     Other      Year 1       19/20
+    ##      course                     level        year school_year
+    ##        question_type unique_users
+    ##  1:     Open\nanswer          227
+    ##  2: Multiple\nchoice          345
+    ##  3:     Open\nanswer          492
+    ##  4: Multiple\nchoice          610
+    ##  5:     Open\nanswer         5819
+    ##  6: Multiple\nchoice         6021
+    ##  7:     Open\nanswer         5450
+    ##  8: Multiple\nchoice         5588
+    ##  9:     Open\nanswer         1049
+    ## 10: Multiple\nchoice         1110
+    ## 11:     Open\nanswer         2023
+    ## 12: Multiple\nchoice         2105
+    ## 13:     Open\nanswer         3053
+    ## 14: Multiple\nchoice         3145
+    ## 15:     Open\nanswer         2710
+    ## 16: Multiple\nchoice         2779
+    ## 17:     Open\nanswer          976
+    ## 18: Multiple\nchoice         1015
+    ## 19:     Open\nanswer         2006
+    ## 20: Multiple\nchoice         2059
+    ## 21:     Open\nanswer         2998
+    ## 22: Multiple\nchoice         3208
+    ## 23:     Open\nanswer         4747
+    ## 24: Multiple\nchoice         4938
+    ## 25:     Open\nanswer         2061
+    ## 26: Multiple\nchoice         2122
+    ## 27:     Open\nanswer         3253
+    ## 28: Multiple\nchoice         3327
+    ## 29:     Open\nanswer         3025
+    ## 30: Multiple\nchoice         3160
+    ## 31:     Open\nanswer         2842
+    ## 32: Multiple\nchoice         2923
+    ## 33:     Open\nanswer         1319
+    ## 34: Multiple\nchoice         1447
+    ## 35:     Open\nanswer         1994
+    ## 36: Multiple\nchoice         2094
+    ## 37:     Open\nanswer          437
+    ## 38: Multiple\nchoice          439
+    ## 39:     Open\nanswer          382
+    ## 40: Multiple\nchoice          379
+    ## 41:     Open\nanswer          616
+    ## 42: Multiple\nchoice          617
+    ## 43:     Open\nanswer          421
+    ## 44: Multiple\nchoice          421
+    ## 45: Multiple\nchoice         9650
+    ## 46: Multiple\nchoice         9045
+    ## 47: Multiple\nchoice         9741
+    ## 48: Multiple\nchoice        11094
+    ## 49: Multiple\nchoice         5674
+    ## 50: Multiple\nchoice         6291
+    ## 51: Multiple\nchoice         1550
+    ## 52: Multiple\nchoice         1896
+    ## 53: Multiple\nchoice         5900
+    ## 54: Multiple\nchoice         6247
+    ## 55: Multiple\nchoice         3041
+    ## 56: Multiple\nchoice         3099
+    ## 57: Multiple\nchoice          262
+    ## 58: Multiple\nchoice          232
+    ## 59: Multiple\nchoice         2901
+    ## 60: Multiple\nchoice         3210
+    ## 61: Multiple\nchoice          125
+    ## 62: Multiple\nchoice          163
+    ## 63: Multiple\nchoice         9347
+    ## 64: Multiple\nchoice        10908
+    ## 65: Multiple\nchoice          312
+    ## 66: Multiple\nchoice          215
+    ## 67: Multiple\nchoice         2553
+    ## 68: Multiple\nchoice         2876
+    ## 69: Multiple\nchoice         8090
+    ## 70: Multiple\nchoice         7333
+    ## 71:     Open\nanswer          106
+    ## 72:     Open\nanswer           64
+    ## 73:     Open\nanswer            4
+    ## 74:     Open\nanswer            8
+    ##        question_type unique_users
+
+Plot response accuracy by week (mean +/- 1
+SE).
+
+``` r
+p_acc_level_year <- ggplot(accuracy_strat_by_week[course == "French" & level != "Other",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.4, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_level_year
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+
+``` r
+ggsave("../output/acc_by_question_type_french_level_year.pdf", width = 9, height = 5)
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_french_level_year.png", width = 9, height = 5)
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+``` r
+p_acc_level_year <- ggplot(accuracy_strat_by_week[course == "English" & level != "Other" & question_type == "Multiple\nchoice",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line() +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.4, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_level_year
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+
+``` r
+ggsave("../output/acc_by_question_type_english_level_year.pdf", width = 9, height = 5)
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_english_level_year.png", width = 9, height = 5)
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+### By level
+
+``` r
+accuracy_level_by_week_and_user <- accuracy_strat[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, level, user, mcq)]
+
+accuracy_level_by_week <- accuracy_level_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, level, mcq)]
+```
+
+Add question type
+labels:
+
+``` r
+accuracy_level_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+How many users in each
+group?
+
+``` r
+accuracy_level_by_week_and_user[, .(unique_users = length(unique(user))),  by = .(course, level, school_year, mcq)]
+```
+
+    ##      course                     level school_year   mcq unique_users
+    ##  1:  French    Pre-vocational\n(vmbo)       18/19 FALSE         4568
+    ##  2:  French    Pre-vocational\n(vmbo)       18/19  TRUE         4949
+    ##  3:  French    Pre-vocational\n(vmbo)       19/20 FALSE         5312
+    ##  4:  French    Pre-vocational\n(vmbo)       19/20  TRUE         5610
+    ##  5:  French General secondary\n(havo)       18/19 FALSE         9853
+    ##  6:  French General secondary\n(havo)       18/19  TRUE        10326
+    ##  7:  French General secondary\n(havo)       19/20 FALSE        12198
+    ##  8:  French General secondary\n(havo)       19/20  TRUE        12608
+    ##  9:  French     Pre-university\n(vwo)       18/19 FALSE         6078
+    ## 10:  French     Pre-university\n(vwo)       18/19  TRUE         6270
+    ## 11:  French     Pre-university\n(vwo)       19/20 FALSE         7948
+    ## 12:  French     Pre-university\n(vwo)       19/20  TRUE         8142
+    ## 13:  German General secondary\n(havo)       18/19 FALSE          437
+    ## 14:  German General secondary\n(havo)       18/19  TRUE          439
+    ## 15:  German     Pre-university\n(vwo)       18/19 FALSE          382
+    ## 16:  German     Pre-university\n(vwo)       18/19  TRUE          379
+    ## 17:  German     Pre-university\n(vwo)       19/20 FALSE          616
+    ## 18:  German     Pre-university\n(vwo)       19/20  TRUE          617
+    ## 19:  German General secondary\n(havo)       19/20 FALSE          421
+    ## 20:  German General secondary\n(havo)       19/20  TRUE          421
+    ## 21: English    Pre-vocational\n(vmbo)       18/19  TRUE        34520
+    ## 22: English    Pre-vocational\n(vmbo)       19/20  TRUE        37148
+    ## 23: English General secondary\n(havo)       18/19  TRUE        16593
+    ## 24: English General secondary\n(havo)       19/20  TRUE        16810
+    ## 25: English     Pre-university\n(vwo)       18/19  TRUE         7132
+    ## 26: English     Pre-university\n(vwo)       19/20  TRUE         7858
+    ## 27: English                     Other       18/19  TRUE          698
+    ## 28: English                     Other       19/20  TRUE          610
+    ## 29: English     Pre-university\n(vwo)       18/19 FALSE          106
+    ## 30: English     Pre-university\n(vwo)       19/20 FALSE           64
+    ## 31: English                     Other       18/19 FALSE            4
+    ## 32: English                     Other       19/20 FALSE            8
+    ##      course                     level school_year   mcq unique_users
+
+Plot response accuracy by week (mean +/- 1
+SE).
+
+``` r
+p_acc_level <- ggplot(accuracy_level_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & level != "Other",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.6, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_level
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
+
+``` r
+ggsave("../output/acc_by_question_type_level.pdf", width = 9, height = 5)
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_level.png", width = 9, height = 5)
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+### By year
+
+``` r
+accuracy_year_by_week_and_user <- accuracy_strat[, .(accuracy = sum(accuracy*n)/sum(n)), by = .(course, school_year, doy_posix_aligned_week, year, user, mcq)]
+
+accuracy_year_by_week <- accuracy_year_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
+                              accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, year, mcq)]
+```
+
+Add question type
+labels:
+
+``` r
+accuracy_year_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+How many users in each
+group?
+
+``` r
+accuracy_year_by_week_and_user[, .(unique_users = length(unique(user))),  by = .(course, year, school_year, mcq)]
+```
+
+    ##      course        year school_year   mcq unique_users
+    ##  1:  French    Year 3/4       18/19 FALSE         2249
+    ##  2:  French    Year 3/4       18/19  TRUE         2467
+    ##  3:  French    Year 3/4       19/20 FALSE         4517
+    ##  4:  French    Year 3/4       19/20  TRUE         4768
+    ##  5:  French      Year 1       18/19 FALSE        11856
+    ##  6:  French      Year 1       18/19  TRUE        12281
+    ##  7:  French      Year 1       19/20 FALSE        10922
+    ##  8:  French      Year 1       19/20  TRUE        11206
+    ##  9:  French      Year 2       18/19 FALSE         6353
+    ## 10:  French      Year 2       18/19  TRUE         6750
+    ## 11:  French      Year 2       19/20 FALSE         9968
+    ## 12:  French      Year 2       19/20  TRUE        10333
+    ## 13:  German Tweede Fase       18/19 FALSE          818
+    ## 14:  German Tweede Fase       18/19  TRUE          817
+    ## 15:  German Tweede Fase       19/20 FALSE         1036
+    ## 16:  German Tweede Fase       19/20  TRUE         1037
+    ## 17: English      Year 1       18/19  TRUE        20831
+    ## 18: English      Year 1       19/20  TRUE        19463
+    ## 19: English      Year 3       18/19  TRUE        14280
+    ## 20: English      Year 3       19/20  TRUE        16313
+    ## 21: English      Year 2       18/19  TRUE        17620
+    ## 22: English      Year 2       19/20  TRUE        20128
+    ## 23: English      Year 4       18/19  TRUE         5900
+    ## 24: English      Year 4       19/20  TRUE         6247
+    ## 25: English      Year 1       18/19 FALSE          110
+    ## 26: English      Year 1       19/20 FALSE           72
+    ##      course        year school_year   mcq unique_users
+
+Plot response accuracy by week (mean +/- 1
+SE).
+
+``` r
+p_acc_year <- ggplot(accuracy_year_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & year != "Other",],
+            aes(x = as.POSIXct(doy_posix_aligned_week), y = accuracy_mean, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(year ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1.05, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = accuracy_mean - accuracy_se, ymax = accuracy_mean + accuracy_se, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.6, 1)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Accuracy",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_acc_year
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-41-1.png)<!-- -->
+
+``` r
+ggsave("../output/acc_by_question_type_year.pdf", width = 9, height = 5)
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_year.png", width = 9, height = 5)
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+### Regression model
 
 Fit a mixed effects model to the daily accuracy data:
 
@@ -542,7 +1157,7 @@ ggplot(acc_fit, aes(x = period, y = accuracy, colour = school_year, lty = mcq, g
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-45-1.png)<!-- -->
 
 Empirical
 means:
@@ -574,7 +1189,7 @@ ggplot(accuracy_mean, aes(x = period, y = accuracy, colour = school_year, lty = 
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-47-1.png)<!-- -->
 
 ## Response time
 
@@ -582,6 +1197,7 @@ ggplot(accuracy_mean, aes(x = period, y = accuracy, colour = school_year, lty = 
 db <- db_connect()
 rt <- dbGetQuery(db, 
                  "SELECT r.method AS 'method',
+                  r.book_info_id AS 'book_info_id',
                   DATE(r.date + 3600, 'unixepoch') AS 'doy',
                   r.user_id AS 'user',
                   r.choices > 1 AS 'mcq',
@@ -601,6 +1217,7 @@ doys[, doy_posix_week := cut.POSIXt(as.POSIXct(doy), "week")]
 doys[, school_year := ifelse(doy_posix < "2019-08-01", "18/19", "19/20")]
 doys[school_year == "18/19", doy_posix_aligned := as.POSIXct(doy_posix + 365*24*60*60, origin = "1970-01-01")]
 doys[school_year == "19/20", doy_posix_aligned := doy_posix]
+doys[, doy_posix_aligned_week := cut.POSIXt(doy_posix_aligned, "week")]
 doys[, period := dplyr::case_when(
   doy_posix_aligned >= date_schools_opened ~ "post-lockdown",
   doy_posix_aligned >= date_schools_closed & doy_posix_aligned < date_schools_opened ~ "during-lockdown",
@@ -631,10 +1248,12 @@ errors)
 rt <- rt[rt > 0]
 ```
 
-``` r
-rt_med <- rt[, .(rt_median = median(rt)), by = .(period, school_year, mcq, user, course, doy_posix_week)]
+### Whole population
 
-rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(period, school_year, mcq, course, doy_posix_week)]
+``` r
+rt_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, doy_posix_week)]
+
+rt_by_week <- rt_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, doy_posix_week)]
 ```
 
 Overlap the two school
@@ -675,7 +1294,8 @@ p_rt <- ggplot(rt_by_week[(course == "English" & mcq == TRUE) | course == "Frenc
                      "2020-06-01 02:00:00 CET")),
                    limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
                    date_labels = "%b") +
-  scale_y_continuous(limits = c(1.7, 3.7), labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1.7, 3.7)) +
   scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
   scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
   labs(x = NULL,
@@ -693,7 +1313,7 @@ p_rt
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-58-1.png)<!-- -->
 
 ``` r
 ggsave("../output/rt_by_question_type.pdf", width = 9, height = 3)
@@ -707,6 +1327,334 @@ ggsave("../output/rt_by_question_type.png", width = 9, height = 3)
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
+### By level and year
+
+Add book
+info:
+
+``` r
+rt[book_info[book_type == "Hoofdboek",], on  = "book_info_id", c("method_group", "book_title") := .(i.method_group, i.book_title)]
+```
+
+Simplify level names:
+
+``` r
+# Keep all distinctions
+rt[, book_title_simple := stringr::str_sub(book_title, 3, -10)]
+rt[, book_title_simple := factor(book_title_simple, levels = c("vmbo b/lwoo", "vmbo b", "vmbo bk", "vmbo k", "vmbo kgt", "vmbo-gt", "vmbo gt", "vmbo-gt/havo", "vmbo (t)hv", "havo", "havo vwo", "vwo"))]
+
+# Simplify to three levels
+rt[, level := dplyr::case_when(
+  grepl( "hv", book_title) ~ "General secondary\n(havo)",
+  grepl("vmbo", book_title) ~ "Pre-vocational\n(vmbo)",
+  grepl("havo", book_title) ~ "General secondary\n(havo)",
+  grepl("vwo", book_title) ~ "Pre-university\n(vwo)",
+  TRUE ~ "Other")]
+rt[, level := factor(level, levels = c("Other", "Pre-vocational\n(vmbo)", "General secondary\n(havo)", "Pre-university\n(vwo)"))]
+```
+
+Simplify year names:
+
+``` r
+rt[, year := dplyr::case_when(
+  method_group == "Leerjaar 1 (5e Ed.)" ~ "Year 1",
+  method_group == "Leerjaar 2 (5e Ed.)" ~ "Year 2",
+  method_group == "Leerjaar 3 (5e Ed.)" ~ "Year 3",
+  method_group == "Leerjaar 3/4 (5e Ed.)" ~ "Year 3/4",
+  method_group == "Leerjaar 4 (5e Ed.)" ~ "Year 4",
+  method_group == "Tweede Fase (6e Ed.)" ~ "Tweede Fase",
+  TRUE ~ "Other")]
+```
+
+``` r
+rt_strat_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, level, year, doy_posix_week)]
+
+rt_strat_by_week <- rt_strat_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, level, year, doy_posix_week)]
+```
+
+Overlap the two school
+years:
+
+``` r
+rt_strat_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_strat_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type
+labels:
+
+``` r
+rt_strat_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+``` r
+rt_strat_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
+
+Plot response time by week (mean +/- 1 SE).
+
+``` r
+p_rt_level_year <- ggplot(rt_strat_by_week[course == "French",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 4)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_level_year
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-66-1.png)<!-- -->
+
+``` r
+ggsave("../output/rt_by_question_type_french_level_year.pdf", width = 9, height = 3)
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_french_level_year.png", width = 9, height = 3)
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+``` r
+p_rt_level_year <- ggplot(rt_strat_by_week[course == "English" & question_type == "Multiple\nchoice" & level != "Other",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ year) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 4)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_level_year
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-67-1.png)<!-- -->
+
+``` r
+ggsave("../output/rt_by_question_type_english_level_year.pdf", width = 9, height = 3)
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_english_level_year.png", width = 9, height = 3)
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+### By level
+
+``` r
+rt_level_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, level, doy_posix_week)]
+
+rt_level_by_week <- rt_level_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, level, doy_posix_week)]
+```
+
+Overlap the two school
+years:
+
+``` r
+rt_level_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_level_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type
+labels:
+
+``` r
+rt_level_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+``` r
+rt_level_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
+
+Plot response time by week (mean +/- 1
+SE).
+
+``` r
+p_rt_level <- ggplot(rt_level_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & level != "Other",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(level ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 6)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_level
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-72-1.png)<!-- -->
+
+``` r
+ggsave("../output/rt_by_question_type_level.pdf", width = 9, height = 5)
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_level.png", width = 9, height = 5)
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+### By year
+
+``` r
+rt_year_med <- rt[, .(rt_median = median(rt)), by = .(school_year, mcq, user, course, year, doy_posix_week)]
+
+rt_year_by_week <- rt_year_med[, .(rt = mean(rt_median), rt_se = sd(rt_median)/sqrt(.N)), by = .(school_year, mcq, course, year, doy_posix_week)]
+```
+
+Overlap the two school
+years:
+
+``` r
+rt_year_by_week[school_year == "18/19", doy_posix_week_aligned := as.POSIXct(as.POSIXct(doy_posix_week) + 365*24*60*60, origin = "1970-01-01")]
+rt_year_by_week[school_year == "19/20", doy_posix_week_aligned := as.POSIXct(doy_posix_week)]
+```
+
+Add question type
+labels:
+
+``` r
+rt_year_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
+```
+
+``` r
+rt_year_by_week[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
+```
+
+Plot response time by week (mean +/- 1
+SE).
+
+``` r
+p_rt_year <- ggplot(rt_year_by_week[((course == "English" & question_type == "Multiple\nchoice") | course == "French") & year != "Other",],
+            aes(x = doy_posix_week_aligned, y = rt/1e3, group = interaction(school_year, question_type), colour = school_year, fill = school_year)) +
+  facet_grid(year ~ course) +
+  geom_rect(xmin = date_schools_closed, xmax = date_schools_opened, ymin = 0, ymax = 1000, fill = "grey92", colour = "grey50", lty = 2, alpha = .9) +
+  geom_ribbon(aes(ymin = rt/1e3 - rt_se/1e3, ymax = rt/1e3 + rt_se/1e3, colour = NULL), alpha = 0.2) +
+  geom_line(aes(lty = question_type)) +
+  scale_x_datetime(expand = c(0, 0),
+                   breaks = as.POSIXct(c(
+                     "2019-10-01 02:00:00 CET",
+                     "2019-12-01 02:00:00 CET",
+                     "2020-02-01 02:00:00 CET",
+                     "2020-04-01 02:00:00 CET",
+                     "2020-06-01 02:00:00 CET")),
+                   limits = as.POSIXct(c("2019-09-01 02:00:00 CET", "2020-07-01 02:00:00 CET")),
+                   date_labels = "%b") +
+  scale_y_continuous(labels = scales::unit_format(unit = "s", accuracy = .1)) +
+  coord_cartesian(ylim = c(1, 4)) +
+  scale_colour_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  scale_fill_viridis_d(end = .5, direction = -1, na.translate = FALSE) +
+  labs(x = NULL,
+       y = "Response time",
+       colour = "School year",
+       fill = "School year",
+       lty = "Question type") +
+  guides(colour = guide_legend(order = 1),
+         fill = guide_legend(order = 1),
+         lty = guide_legend(order = 2)) +
+  theme_paper
+
+p_rt_year
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+![](02_performance_files/figure-gfm/unnamed-chunk-77-1.png)<!-- -->
+
+``` r
+ggsave("../output/rt_by_question_type_year.pdf", width = 9, height = 5)
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_year.png", width = 9, height = 5)
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+### Regression model
+
+``` r
+rt_model_dat <- rt[, .(rt_median = median(rt)), by = .(course, school_year, period, doy_posix, mcq, user)]
+```
+
 Fit a generalised linear mixed effects model (assuming a Gamma
 distribution for RT and an identity link function; Lo & Andrew, 2015) to
 the daily median RT:
@@ -714,7 +1662,7 @@ the daily median RT:
 ``` r
 if(!file.exists("../output/m_rt_fit.rds")) {
   m_rt <- glmer(rt_median ~ period*school_year*mcq + (1 | user) + (1 | course),
-                 data = rt_med[(course == "English" & mcq == TRUE) | course == "French",],
+                 data = rt_model_dat[(course == "English" & mcq == TRUE) | course == "French",],
                  family = Gamma(link = "identity"),
                  nAGQ = 0,
                  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e6)))
@@ -732,50 +1680,50 @@ m_rt_summary
     ##  Family: Gamma  ( identity )
     ## Formula: 
     ## rt_median ~ period * school_year * mcq + (1 | user) + (1 | course)
-    ##    Data: rt_med[(course == "English" & mcq == TRUE) | course == "French",  
-    ##     ]
+    ##    Data: rt_model_dat[(course == "English" & mcq == TRUE) | course ==  
+    ##     "French", ]
     ## Control: 
     ## glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e+06))
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
-    ##  8752537  8752706 -4376253  8752507   568060 
+    ## 10332190 10332361 -5166080 10332160   669366 
     ## 
     ## Scaled residuals: 
     ##     Min      1Q  Median      3Q     Max 
-    ##  -2.796  -0.339  -0.065   0.244 226.790 
+    ##  -2.732  -0.345  -0.070   0.241 220.533 
     ## 
     ## Random effects:
     ##  Groups   Name        Variance  Std.Dev.
-    ##  user     (Intercept) 2.707e+05 520.2651
-    ##  course   (Intercept) 1.811e+02  13.4560
-    ##  Residual             1.264e-01   0.3555
-    ## Number of obs: 568075, groups:  user, 133398; course, 2
+    ##  user     (Intercept) 2.828e+05 531.8041
+    ##  course   (Intercept) 2.852e+02  16.8883
+    ##  Residual             1.324e-01   0.3639
+    ## Number of obs: 669381, groups:  user, 133398; course, 2
     ## 
     ## Fixed effects:
     ##                                                Estimate Std. Error t value
-    ## (Intercept)                                    2131.760     10.943 194.814
-    ## periodduring-lockdown                           208.067      7.280  28.580
-    ## periodpost-lockdown                             202.435     11.240  18.010
-    ## school_year18/19                                 25.435      6.860   3.708
-    ## mcqTRUE                                         145.710      5.661  25.739
-    ## periodduring-lockdown:school_year18/19         -275.585     11.913 -23.133
-    ## periodpost-lockdown:school_year18/19           -310.462     17.959 -17.288
-    ## periodduring-lockdown:mcqTRUE                  -210.329      7.860 -26.761
-    ## periodpost-lockdown:mcqTRUE                    -204.176     12.436 -16.417
-    ## school_year18/19:mcqTRUE                        -58.248      7.226  -8.061
-    ## periodduring-lockdown:school_year18/19:mcqTRUE  274.439     12.877  21.312
-    ## periodpost-lockdown:school_year18/19:mcqTRUE    336.311     19.768  17.013
+    ## (Intercept)                                    2133.210     13.019 163.848
+    ## periodduring-lockdown                           207.475      6.937  29.909
+    ## periodpost-lockdown                             198.282     10.619  18.673
+    ## school_year18/19                                 28.172      6.564   4.292
+    ## mcqTRUE                                         150.852      5.382  28.028
+    ## periodduring-lockdown:school_year18/19         -280.435     11.362 -24.681
+    ## periodpost-lockdown:school_year18/19           -294.190     17.057 -17.247
+    ## periodduring-lockdown:mcqTRUE                  -210.118      7.464 -28.151
+    ## periodpost-lockdown:mcqTRUE                    -199.308     11.721 -17.005
+    ## school_year18/19:mcqTRUE                        -62.059      6.894  -9.002
+    ## periodduring-lockdown:school_year18/19:mcqTRUE  278.331     12.257  22.708
+    ## periodpost-lockdown:school_year18/19:mcqTRUE    315.189     18.735  16.824
     ##                                                Pr(>|z|)    
     ## (Intercept)                                     < 2e-16 ***
     ## periodduring-lockdown                           < 2e-16 ***
     ## periodpost-lockdown                             < 2e-16 ***
-    ## school_year18/19                               0.000209 ***
+    ## school_year18/19                               1.77e-05 ***
     ## mcqTRUE                                         < 2e-16 ***
     ## periodduring-lockdown:school_year18/19          < 2e-16 ***
     ## periodpost-lockdown:school_year18/19            < 2e-16 ***
     ## periodduring-lockdown:mcqTRUE                   < 2e-16 ***
     ## periodpost-lockdown:mcqTRUE                     < 2e-16 ***
-    ## school_year18/19:mcqTRUE                       7.57e-16 ***
+    ## school_year18/19:mcqTRUE                        < 2e-16 ***
     ## periodduring-lockdown:school_year18/19:mcqTRUE  < 2e-16 ***
     ## periodpost-lockdown:school_year18/19:mcqTRUE    < 2e-16 ***
     ## ---
@@ -783,17 +1731,17 @@ m_rt_summary
     ## 
     ## Correlation of Fixed Effects:
     ##                   (Intr) prddr- prdps- sc_18/19 mcTRUE prdd-:_18/19
-    ## prddrng-lck       -0.313                                           
-    ## prdpst-lckd       -0.201  0.334                                    
-    ## schl_y18/19       -0.347  0.487  0.313                             
-    ## mcqTRUE           -0.419  0.568  0.367  0.623                      
-    ## prdd-:_18/19       0.198 -0.618 -0.207 -0.534   -0.353             
-    ## prdp-:_18/19       0.131 -0.215 -0.629 -0.356   -0.235  0.229      
-    ## prddr-:TRUE        0.283 -0.862 -0.281 -0.437   -0.650  0.531      
-    ## prdps-:TRUE        0.178 -0.274 -0.856 -0.275   -0.410  0.170      
-    ## s_18/19:TRU        0.308 -0.443 -0.285 -0.880   -0.706  0.484      
-    ## prdd-:_18/19:TRUE -0.177  0.531  0.173  0.475    0.403 -0.883      
-    ## prdp-:_18/19:TRUE -0.115  0.176  0.541  0.310    0.263 -0.190      
+    ## prddrng-lck       -0.251                                           
+    ## prdpst-lckd       -0.161  0.334                                    
+    ## schl_y18/19       -0.277  0.483  0.311                             
+    ## mcqTRUE           -0.335  0.567  0.368  0.619                      
+    ## prdd-:_18/19       0.159 -0.617 -0.207 -0.533   -0.352             
+    ## prdp-:_18/19       0.105 -0.214 -0.626 -0.356   -0.234  0.229      
+    ## prddr-:TRUE        0.226 -0.861 -0.281 -0.434   -0.651  0.530      
+    ## prdps-:TRUE        0.143 -0.275 -0.854 -0.275   -0.413  0.170      
+    ## s_18/19:TRU        0.245 -0.440 -0.284 -0.879   -0.703  0.483      
+    ## prdd-:_18/19:TRUE -0.141  0.529  0.173  0.474    0.403 -0.882      
+    ## prdp-:_18/19:TRUE -0.092  0.176  0.537  0.311    0.263 -0.191      
     ##                   prdp-:_18/19 prdd-:TRUE prdp-:TRUE s_18/19:
     ## prddrng-lck                                                  
     ## prdpst-lckd                                                  
@@ -802,10 +1750,10 @@ m_rt_summary
     ## prdd-:_18/19                                                 
     ## prdp-:_18/19                                                 
     ## prddr-:TRUE        0.179                                     
-    ## prdps-:TRUE        0.538        0.302                        
-    ## s_18/19:TRU        0.322        0.492      0.309             
-    ## prdd-:_18/19:TRUE -0.194       -0.614     -0.186     -0.539  
-    ## prdp-:_18/19:TRUE -0.872       -0.194     -0.631     -0.353  
+    ## prdps-:TRUE        0.534        0.305                        
+    ## s_18/19:TRU        0.322        0.490      0.310             
+    ## prdd-:_18/19:TRUE -0.195       -0.613     -0.187     -0.539  
+    ## prdp-:_18/19:TRUE -0.872       -0.194     -0.627     -0.354  
     ##                   prdd-:_18/19:TRUE
     ## prddrng-lck                        
     ## prdpst-lckd                        
@@ -817,7 +1765,7 @@ m_rt_summary
     ## prdps-:TRUE                        
     ## s_18/19:TRU                        
     ## prdd-:_18/19:TRUE                  
-    ## prdp-:_18/19:TRUE  0.211
+    ## prdp-:_18/19:TRUE  0.212
 
 Save coefficients as a table for in the paper:
 
@@ -861,18 +1809,18 @@ rt_fit
 ```
 
     ##             period school_year   mcq       rt
-    ## 1     pre-lockdown       18/19  TRUE 2244.657
-    ## 2  during-lockdown       18/19  TRUE 2241.250
-    ## 3    post-lockdown       18/19  TRUE 2268.765
-    ## 4     pre-lockdown       19/20  TRUE 2277.470
-    ## 5  during-lockdown       19/20  TRUE 2275.208
-    ## 6    post-lockdown       19/20  TRUE 2275.729
-    ## 7     pre-lockdown       18/19 FALSE 2157.196
-    ## 8  during-lockdown       18/19 FALSE 2089.678
-    ## 9    post-lockdown       18/19 FALSE 2049.169
-    ## 10    pre-lockdown       19/20 FALSE 2131.760
-    ## 11 during-lockdown       19/20 FALSE 2339.828
-    ## 12   post-lockdown       19/20 FALSE 2334.196
+    ## 1     pre-lockdown       18/19  TRUE 2250.175
+    ## 2  during-lockdown       18/19  TRUE 2245.429
+    ## 3    post-lockdown       18/19  TRUE 2270.149
+    ## 4     pre-lockdown       19/20  TRUE 2284.062
+    ## 5  during-lockdown       19/20  TRUE 2281.419
+    ## 6    post-lockdown       19/20  TRUE 2283.036
+    ## 7     pre-lockdown       18/19 FALSE 2161.382
+    ## 8  during-lockdown       18/19 FALSE 2088.422
+    ## 9    post-lockdown       18/19 FALSE 2065.474
+    ## 10    pre-lockdown       19/20 FALSE 2133.210
+    ## 11 during-lockdown       19/20 FALSE 2340.684
+    ## 12   post-lockdown       19/20 FALSE 2331.491
 
 ``` r
 ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
@@ -882,36 +1830,36 @@ ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = 
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-35-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-81-1.png)<!-- -->
 
 Empirical
 means:
 
 ``` r
-rt_mean <- rt_med[(course == "English" & mcq == TRUE) | course == "French", .(rt = mean(rt_median)), by = .(period, school_year, mcq, user, course)][, .(rt = mean(rt), rt_sd = sd(rt)), by = .(period, school_year, mcq, course)]
+rt_mean <- rt_model_dat[(course == "English" & mcq == TRUE) | course == "French", .(rt = mean(rt_median)), by = .(period, school_year, mcq, user, course)][, .(rt = mean(rt), rt_sd = sd(rt)), by = .(period, school_year, mcq, course)]
 rt_mean[, school_year := factor(school_year, levels = c("18/19", "19/20"))]
 rt_mean
 ```
 
     ##              period school_year   mcq  course       rt     rt_sd
-    ##  1:    pre-lockdown       18/19  TRUE English 2205.742 2573.2414
-    ##  2:    pre-lockdown       18/19  TRUE  French 2341.638  580.6344
-    ##  3:    pre-lockdown       18/19 FALSE  French 2440.779 8970.7395
-    ##  4: during-lockdown       18/19  TRUE English 2197.070 1116.4534
-    ##  5: during-lockdown       18/19  TRUE  French 2371.042 5658.8866
-    ##  6: during-lockdown       18/19 FALSE  French 2429.875 7199.3615
-    ##  7:   post-lockdown       18/19  TRUE English 2228.774 1100.5364
-    ##  8:   post-lockdown       18/19  TRUE  French 2363.443 2226.1941
-    ##  9:   post-lockdown       18/19 FALSE  French 2204.874 1538.2594
-    ## 10:    pre-lockdown       19/20  TRUE English 2218.666  823.8789
-    ## 11:    pre-lockdown       19/20  TRUE  French 2361.963 1001.5762
-    ## 12:    pre-lockdown       19/20 FALSE  French 2422.505 4494.2201
-    ## 13: during-lockdown       19/20  TRUE English 2194.701  597.7885
-    ## 14: during-lockdown       19/20  TRUE  French 2361.611 1372.1367
-    ## 15: during-lockdown       19/20 FALSE  French 2673.003 2653.2305
-    ## 16:   post-lockdown       19/20  TRUE English 2208.724  710.2326
-    ## 17:   post-lockdown       19/20  TRUE  French 2318.509  557.9095
-    ## 18:   post-lockdown       19/20 FALSE  French 2677.193 2500.3927
+    ##  1:    pre-lockdown       18/19  TRUE English 2211.323 2572.3131
+    ##  2:    pre-lockdown       18/19  TRUE  French 2341.094  581.5368
+    ##  3:    pre-lockdown       18/19 FALSE  French 2461.292 9161.1828
+    ##  4: during-lockdown       18/19  TRUE English 2202.397 1123.5965
+    ##  5: during-lockdown       18/19  TRUE  French 2369.624 5658.9356
+    ##  6: during-lockdown       18/19 FALSE  French 2434.324 7199.2482
+    ##  7:   post-lockdown       18/19  TRUE English 2234.020 1106.6481
+    ##  8:   post-lockdown       18/19  TRUE  French 2364.000 2226.5155
+    ##  9:   post-lockdown       18/19 FALSE  French 2217.881 1548.1445
+    ## 10:    pre-lockdown       19/20  TRUE English 2223.827  822.4487
+    ## 11:    pre-lockdown       19/20  TRUE  French 2361.385 1001.8694
+    ## 12:    pre-lockdown       19/20 FALSE  French 2433.140 4508.4740
+    ## 13: during-lockdown       19/20  TRUE English 2200.052  600.2422
+    ## 14: during-lockdown       19/20  TRUE  French 2359.652 1372.3181
+    ## 15: during-lockdown       19/20 FALSE  French 2707.991 3572.8363
+    ## 16:   post-lockdown       19/20  TRUE English 2214.307  712.7022
+    ## 17:   post-lockdown       19/20  TRUE  French 2318.039  560.3395
+    ## 18:   post-lockdown       19/20 FALSE  French 2713.515 2863.3969
 
 ``` r
 ggplot(rt_mean, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
@@ -922,7 +1870,7 @@ ggplot(rt_mean, aes(x = period, y = rt, colour = school_year, lty = mcq, group =
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-83-1.png)<!-- -->
 
 ## Combination plot
 
@@ -956,7 +1904,7 @@ plot_grid(
     
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-39-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-85-1.png)<!-- -->
 
 ``` r
 ggsave("../output/combi_acc_rt.pdf", width = 9, height = 3.5)
@@ -1204,7 +2152,7 @@ p_progress_french <- plot_grid(p_french_y1, p_french_y2, p_french_y3,
 p_progress_french
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-53-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-99-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_french.pdf", width = 9, height = 9)
@@ -1239,7 +2187,7 @@ ggplot(progress_lockdown[course == "French"], aes(x = school_year, y = prop, fil
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-55-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-101-1.png)<!-- -->
 
 Perform a chi-square test of homogeneity to determine whether school
 years are significantly different.
@@ -1346,7 +2294,7 @@ ggplot(progress_lockdown[school_year == "19/20" & course == "French"], aes(x = c
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-57-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-103-1.png)<!-- -->
 
 Are these changes really important? We may expect a certain amount of
 fluctuation between any pair of school years. We don’t have data from
@@ -1401,7 +2349,7 @@ ggplot(prop_change_window, aes(x = prop_change * 100, y = window, group = window
 
     ## Picking joint bandwidth of 0.583
 
-![](02_performance_files/figure-gfm/unnamed-chunk-60-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-106-1.png)<!-- -->
 
 Compare the aggregated density to the changes during the lockdown
 period:
@@ -1419,7 +2367,7 @@ ggplot(prop_change_combined, aes(x = prop_change, colour = period)) +
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-61-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-107-1.png)<!-- -->
 
 ``` r
 prop_change_sd <- prop_change_window[, .(sd = sd(prop_change) * 100), by = .(course, year, level)]
@@ -1447,7 +2395,7 @@ p_change_french <- ggplot(progress_lockdown[school_year == "19/20" & course == "
 p_change_french
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-63-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-109-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_change_french.pdf", width = 5, height = 4)
@@ -1478,7 +2426,7 @@ plot_grid(p_french_y1, p_french_y2, p_french_y3, p_change_french,
 
     ## Warning: Removed 23 rows containing missing values (geom_col).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-64-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-110-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_french.pdf", width = 9, height = 9)
@@ -1598,7 +2546,7 @@ plot_grid(
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-65-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-111-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_alt_french.pdf", width = 9, height = 9)
@@ -1764,7 +2712,7 @@ p_progress_english <- plot_grid(p_english_y1, p_english_y2, p_english_y3, p_engl
 p_progress_english
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-66-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-112-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_english.pdf", width = 9, height = 9)
@@ -1787,7 +2735,7 @@ ggplot(progress_lockdown[course == "English" & level != "Other"], aes(x = school
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-67-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-113-1.png)<!-- -->
 
 Change between school
 years:
@@ -1810,7 +2758,7 @@ p_change_english <- ggplot(progress_lockdown[school_year == "19/20" & course == 
 p_change_english 
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-68-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-114-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
@@ -2081,7 +3029,7 @@ plot_grid(
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-70-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-116-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_alt_english.pdf", width = 9, height = 11)

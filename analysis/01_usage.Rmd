@@ -36,8 +36,10 @@ theme_paper <- theme_classic(base_size = 12) +
 School closure and opening dates
 
 Sources:
-- https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport
-- https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open
+
+  - https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport
+  - https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open
+
 ```{r}
 date_schools_closed <- as.POSIXct("2020-03-16")
 date_schools_opened <- as.POSIXct("2020-06-02")
@@ -100,7 +102,7 @@ Book information, such as the course year, book title, and chapter, are stored i
 Preview first 10 rows
 ```{r}
 db <- db_connect()
-responses_top <- dbGetQuery(db, "SELECT * FROM responses LIMIT 10")
+responses_top <- dbGetQuery(db, "SELECT * FROM responses_noduplicates LIMIT 10")
 responses_top
 
 book_info_top <- dbGetQuery(db, "SELECT * FROM book_info LIMIT 10")
@@ -115,14 +117,14 @@ db_disconnect(db)
 Get number of trials by method, day, and user:
 ```{r}
 db <- db_connect()
-counts <- dbGetQuery(db,"SELECT responses.method AS 'method',
-                          DATE(responses.date + 3600, 'unixepoch') AS 'doy',
-                          responses.user_id AS 'user',
+counts <- dbGetQuery(db,"SELECT r.method AS 'method',
+                          DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                          r.user_id AS 'user',
                           COUNT(*) AS 'trials'
-                          FROM 'responses'
-                          GROUP BY responses.method,
-                          DATE(responses.date  + 3600, 'unixepoch'),
-                          responses.user_id
+                          FROM 'responses_noduplicates' r
+                          GROUP BY r.method,
+                          DATE(r.date  + 3600, 'unixepoch'),
+                          r.user_id
                         ")
 db_disconnect(db)
 
@@ -284,6 +286,7 @@ p_trial_hist <- ggplot(counts_by_day[course %in% c("English", "French"),],
 p_trial_hist
 
 ggsave("../output/trial_hist.pdf", width = 5, height = 3)
+ggsave("../output/trial_hist.eps", width = 5, height = 3)
 ggsave("../output/trial_hist.png", width = 5, height = 3)
 ```
 
@@ -316,6 +319,7 @@ p_trial_hist_line <- ggplot(counts_by_day[course %in% c("English", "French")],
 p_trial_hist_line
 
 ggsave("../output/trial_hist_line.pdf", width = 5, height = 3)
+ggsave("../output/trial_hist_line.eps", width = 5, height = 3)
 ggsave("../output/trial_hist_line.png", width = 5, height = 3)
 ```
 
@@ -452,6 +456,7 @@ p_user_hist <- ggplot(users_by_week[course %in% c("English", "French"),],
 p_user_hist
 
 ggsave("../output/user_hist.pdf", width = 5, height = 3)
+ggsave("../output/user_hist.eps", width = 5, height = 3)
 ggsave("../output/user_hist.png", width = 5, height = 3)
 ```
 
@@ -475,6 +480,7 @@ plot_grid(plot_grid(p_trial_hist, p_user_hist,
           rel_widths = c(1, .2))
 
 ggsave("../output/combi_hist.pdf", width = 9, height = 3)
+ggsave("../output/combi_hist.eps", width = 9, height = 3)
 ggsave("../output/combi_hist.png", width = 9, height = 3)
 ```
 
@@ -484,16 +490,16 @@ ggsave("../output/combi_hist.png", width = 9, height = 3)
 Get number of trials by method, day, hour, and user:
 ```{r}
 db <- db_connect()
-counts_by_hour <- dbGetQuery(db,"SELECT responses.method AS 'method',
-                          DATE(responses.date + 3600, 'unixepoch') AS 'doy',
-                          STRFTIME('%H', responses.date + 3600, 'unixepoch') AS 'hour',
-                          responses.user_id AS 'user',
+counts_by_hour <- dbGetQuery(db,"SELECT r.method AS 'method',
+                          DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                          STRFTIME('%H', r.date + 3600, 'unixepoch') AS 'hour',
+                          r.user_id AS 'user',
                           COUNT(*) AS 'trials'
-                          FROM 'responses'
-                          GROUP BY responses.method,
-                          DATE(responses.date + 3600, 'unixepoch'),
-                          STRFTIME('%H', responses.date + 3600, 'unixepoch'),
-                          responses.user_id
+                          FROM 'responses_noduplicates' r
+                          GROUP BY r.method,
+                          DATE(r.date + 3600, 'unixepoch'),
+                          STRFTIME('%H', r.date + 3600, 'unixepoch'),
+                          r.user_id
                         ")
 db_disconnect(db)
 
@@ -677,6 +683,7 @@ plot_grid(
   rel_widths = c(1, .15))
 
 ggsave("../output/combi_heatmap.pdf", width = 9, height = 4.5)
+ggsave("../output/combi_heatmap.eps", width = 9, height = 4.5)
 ggsave("../output/combi_heatmap.png", width = 9, height = 4.5)
 ```
 
@@ -685,15 +692,16 @@ ggsave("../output/combi_heatmap.png", width = 9, height = 4.5)
 
 ```{r}
 db <- db_connect()
-counts_strat <- dbGetQuery(db,"SELECT responses.method AS 'method',
-                          responses.book_info_id as 'book_info_id',
-                          DATE(responses.date + 3600, 'unixepoch') AS 'doy',
-                          responses.user_id AS 'user',
+counts_strat <- dbGetQuery(db,"SELECT r.method AS 'method',
+                          r.book_info_id as 'book_info_id',
+                          DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                          r.user_id AS 'user',
                           COUNT(*) AS 'trials'
-                          FROM 'responses'
-                          GROUP BY responses.method, responses.book_info_id,
-                          DATE(responses.date + 3600, 'unixepoch'),
-                          responses.user_id
+                          FROM 'responses_noduplicates' r
+                          GROUP BY r.method,
+                          r.book_info_id,
+                          DATE(r.date + 3600, 'unixepoch'),
+                          r.user_id
                         ")
 db_disconnect(db)
 
@@ -821,6 +829,7 @@ ggplot(counts_strat_by_day[course == "French"],
   theme_paper
 
 ggsave("../output/trial_hist_french.pdf", width = 14, height = 10)
+ggsave("../output/trial_hist_french.eps", width = 14, height = 10)
 ggsave("../output/trial_hist_french.png", width = 14, height = 10)
 ```
 
@@ -858,6 +867,7 @@ ggplot(counts_strat_by_day[course == "French"],
   theme_paper
 
 ggsave("../output/trial_hist_french_level.pdf", width = 9, height = 5)
+ggsave("../output/trial_hist_french_level.eps", width = 9, height = 5)
 ggsave("../output/trial_hist_french_level.png", width = 9, height = 5)
 ```
 
@@ -965,6 +975,7 @@ ggplot(counts_strat_by_day[course == "English"],
   theme_paper
 
 ggsave("../output/trial_hist_english.pdf", width = 14, height = 10)
+ggsave("../output/trial_hist_english.eps", width = 14, height = 10)
 ggsave("../output/trial_hist_english.png", width = 14, height = 10)
 ```
 
@@ -1002,6 +1013,7 @@ ggplot(counts_strat_by_day[course == "English" & level != "Other"],
   theme_paper
 
 ggsave("../output/trial_hist_english_level.pdf", width = 9, height = 5)
+ggsave("../output/trial_hist_english_level.eps", width = 9, height = 5)
 ggsave("../output/trial_hist_english_level.png", width = 9, height = 5)
 ```
 
@@ -1045,7 +1057,7 @@ question_type <- dbGetQuery(db,
                       DATE(r.date + 3600, 'unixepoch') AS 'doy',
                       r.choices AS 'choices',
                       COUNT(*) AS 'n'
-                      FROM 'responses' r
+                      FROM 'responses_noduplicates' r
                       WHERE r.study == 0
                       GROUP BY r.method,
                       DATE(r.date + 3600, 'unixepoch'),

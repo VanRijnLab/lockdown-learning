@@ -1,7 +1,7 @@
 SlimStampen Performance During Lockdown
 ================
 Maarten van der Velde
-Last updated: 2021-03-04
+Last updated: 2021-05-19
 
 # Setup
 
@@ -58,12 +58,15 @@ theme_paper <- theme_classic(base_size = 12) +
         panel.grid.major.y = element_line(colour = "grey92"))
 ```
 
-School closure and opening dates
+School closure and opening
+    dates
 
-Sources: -
-<https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport>
--
-<https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open>
+Sources:
+
+  - <https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport>
+  - <https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open>
+
+<!-- end list -->
 
 ``` r
 date_schools_closed <- as.POSIXct("2020-03-16")
@@ -129,54 +132,54 @@ Preview first 10 rows
 
 ``` r
 db <- db_connect()
-responses_top <- dbGetQuery(db, "SELECT * FROM responses LIMIT 10")
+responses_top <- dbGetQuery(db, "SELECT * FROM responses_noduplicates LIMIT 10")
 responses_top
 ```
 
-    ##          date                              user_id          method
-    ## 1  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 2  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 3  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 4  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 5  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 6  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 7  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 8  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 9  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 10 1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ##    start_time   rt duration fact_id correct               answer choices
-    ## 1         304 2412     2413       5       1                 fout       4
-    ## 2        3783  893      893       5       1                 fout       4
-    ## 3        5749 1830     1830       6       1           bergachtig       4
-    ## 4        8665 1625     1625       6       1           bergachtig       4
-    ## 5       11364 1115     1116       2       1                 rand       4
-    ## 6       13595 2697     2697       4       1 vergeven en vergeten       4
-    ## 7       17379 1475     1475       2       1                 rand       4
-    ## 8       19929 2749     2749       4       1 vergeven en vergeten       4
-    ## 9       23825 2851     2851       1       1          je gedragen       4
-    ## 10      27927 1940     1940       8       1           bouwvallig       4
+    ##          date                              user_id         method
+    ## 1  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 2  1574812553 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 3  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 4  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 5  1574812553 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 6  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 7  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 8  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 9  1574812553 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 10 1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ##    start_time    rt duration fact_id correct           answer choices
+    ## 1          23  1569     4956       9       1     avoir raison       1
+    ## 2          33  4698     6967       6       1           minuit       1
+    ## 3          34  2319    10978      10       1  l'enfant unique       1
+    ## 4         224  1489     1490       7       1           waarom       4
+    ## 5         266  9249     9249       5       1            mardi       4
+    ## 6         267  1420     1420       2       1          op tijd       4
+    ## 7         269 55438    55438       5       1     bient&#244;t       4
+    ## 8         301  2358     2358       4       1 snel, binnenkort       4
+    ## 9         334  2039     2039       8       1      de afspraak       4
+    ## 10       2733  1736     1736       2       1          op tijd       4
     ##    backspace_used backspace_used_first study answer_language subsession
-    ## 1              NA                   NA     0              NL          1
-    ## 2              NA                   NA     0              NL          1
-    ## 3              NA                   NA     0              NL          1
-    ## 4              NA                   NA     0              NL          1
-    ## 5              NA                   NA     0              NL          1
-    ## 6              NA                   NA     0              NL          1
-    ## 7              NA                   NA     0              NL          1
-    ## 8              NA                   NA     0              NL          1
-    ## 9              NA                   NA     0              NL          1
+    ## 1               0                    0     0               X          2
+    ## 2               0                    0     0               X          2
+    ## 3               1                    1     0               X          2
+    ## 4              NA                   NA     1              NL          1
+    ## 5              NA                   NA     0               X          3
+    ## 6              NA                   NA     1              NL          1
+    ## 7              NA                   NA     0               X          3
+    ## 8              NA                   NA     1              NL          1
+    ## 9              NA                   NA     1              NL          1
     ## 10             NA                   NA     0              NL          1
     ##                        book_info_id
-    ## 1  2562c0861746d69665bc006db57d61d2
-    ## 2  2562c0861746d69665bc006db57d61d2
-    ## 3  2562c0861746d69665bc006db57d61d2
-    ## 4  2562c0861746d69665bc006db57d61d2
-    ## 5  2562c0861746d69665bc006db57d61d2
-    ## 6  2562c0861746d69665bc006db57d61d2
-    ## 7  2562c0861746d69665bc006db57d61d2
-    ## 8  2562c0861746d69665bc006db57d61d2
-    ## 9  2562c0861746d69665bc006db57d61d2
-    ## 10 2562c0861746d69665bc006db57d61d2
+    ## 1  b7fd0c6450a543df0abce795286cc0d9
+    ## 2  b7fd0c6450a543df0abce795286cc0d9
+    ## 3  b7fd0c6450a543df0abce795286cc0d9
+    ## 4  b7fd0c6450a543df0abce795286cc0d9
+    ## 5  b7fd0c6450a543df0abce795286cc0d9
+    ## 6  b7fd0c6450a543df0abce795286cc0d9
+    ## 7  b7fd0c6450a543df0abce795286cc0d9
+    ## 8  b7fd0c6450a543df0abce795286cc0d9
+    ## 9  b7fd0c6450a543df0abce795286cc0d9
+    ## 10 b7fd0c6450a543df0abce795286cc0d9
 
 ``` r
 book_info_top <- dbGetQuery(db, "SELECT * FROM book_info LIMIT 10")
@@ -232,7 +235,7 @@ correct <- dbGetQuery(db,
                       r.choices > 1 AS 'mcq',
                       r.correct AS 'correct',
                       COUNT(*) AS 'n'
-                      FROM 'responses' r
+                      FROM 'responses_noduplicates' r
                       WHERE r.study == 0
                       GROUP BY r.method,
                       DATE(r.date + 3600, 'unixepoch'),
@@ -296,12 +299,6 @@ accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy,
                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
 ```
 
-``` r
-# accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
-# accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
-#                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
-```
-
 Add question type
 labels:
 
@@ -345,13 +342,23 @@ p_acc
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 ``` r
 ggsave("../output/acc_by_question_type.pdf", width = 9, height = 3)
 ```
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type.eps", width = 9, height = 3)
+```
+
+    ## Warning: Removed 24 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/acc_by_question_type.png", width = 9, height = 3)
@@ -371,7 +378,7 @@ correct_strat <- dbGetQuery(db,
                       r.choices > 1 AS 'mcq',
                       r.correct AS 'correct',
                       COUNT(*) AS 'n'
-                      FROM 'responses' r
+                      FROM 'responses_noduplicates' r
                       WHERE r.study == 0
                       GROUP BY r.method,
                       r.book_info_id,
@@ -586,27 +593,27 @@ accuracy_strat_by_week_and_user[, .(unique_users = length(unique(user))),  by = 
     ##  9:     Open\nanswer         1049
     ## 10: Multiple\nchoice         1110
     ## 11:     Open\nanswer         2023
-    ## 12: Multiple\nchoice         2105
+    ## 12: Multiple\nchoice         2104
     ## 13:     Open\nanswer         3053
     ## 14: Multiple\nchoice         3145
-    ## 15:     Open\nanswer         2710
-    ## 16: Multiple\nchoice         2779
+    ## 15:     Open\nanswer         2709
+    ## 16: Multiple\nchoice         2778
     ## 17:     Open\nanswer          976
     ## 18: Multiple\nchoice         1015
     ## 19:     Open\nanswer         2006
     ## 20: Multiple\nchoice         2059
     ## 21:     Open\nanswer         2998
     ## 22: Multiple\nchoice         3208
-    ## 23:     Open\nanswer         4747
-    ## 24: Multiple\nchoice         4938
+    ## 23:     Open\nanswer         4744
+    ## 24: Multiple\nchoice         4935
     ## 25:     Open\nanswer         2061
     ## 26: Multiple\nchoice         2122
-    ## 27:     Open\nanswer         3253
-    ## 28: Multiple\nchoice         3327
+    ## 27:     Open\nanswer         3251
+    ## 28: Multiple\nchoice         3325
     ## 29:     Open\nanswer         3025
     ## 30: Multiple\nchoice         3160
-    ## 31:     Open\nanswer         2842
-    ## 32: Multiple\nchoice         2923
+    ## 31:     Open\nanswer         2840
+    ## 32: Multiple\nchoice         2922
     ## 33:     Open\nanswer         1319
     ## 34: Multiple\nchoice         1447
     ## 35:     Open\nanswer         1994
@@ -620,21 +627,21 @@ accuracy_strat_by_week_and_user[, .(unique_users = length(unique(user))),  by = 
     ## 43:     Open\nanswer          421
     ## 44: Multiple\nchoice          421
     ## 45: Multiple\nchoice         9650
-    ## 46: Multiple\nchoice         9045
+    ## 46: Multiple\nchoice         9043
     ## 47: Multiple\nchoice         9741
     ## 48: Multiple\nchoice        11094
     ## 49: Multiple\nchoice         5674
-    ## 50: Multiple\nchoice         6291
+    ## 50: Multiple\nchoice         6288
     ## 51: Multiple\nchoice         1550
     ## 52: Multiple\nchoice         1896
     ## 53: Multiple\nchoice         5900
-    ## 54: Multiple\nchoice         6247
+    ## 54: Multiple\nchoice         6246
     ## 55: Multiple\nchoice         3041
     ## 56: Multiple\nchoice         3099
     ## 57: Multiple\nchoice          262
     ## 58: Multiple\nchoice          232
     ## 59: Multiple\nchoice         2901
-    ## 60: Multiple\nchoice         3210
+    ## 60: Multiple\nchoice         3209
     ## 61: Multiple\nchoice          125
     ## 62: Multiple\nchoice          163
     ## 63: Multiple\nchoice         9347
@@ -689,13 +696,23 @@ p_acc_level_year
 
     ## Warning: Removed 11 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
 
 ``` r
 ggsave("../output/acc_by_question_type_french_level_year.pdf", width = 9, height = 5)
 ```
 
     ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_french_level_year.eps", width = 9, height = 5)
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/acc_by_question_type_french_level_year.png", width = 9, height = 5)
@@ -738,13 +755,23 @@ p_acc_level_year
 
     ## Warning: Removed 5 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
 
 ``` r
 ggsave("../output/acc_by_question_type_english_level_year.pdf", width = 9, height = 5)
 ```
 
     ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_english_level_year.eps", width = 9, height = 5)
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/acc_by_question_type_english_level_year.png", width = 9, height = 5)
@@ -778,16 +805,16 @@ accuracy_level_by_week_and_user[, .(unique_users = length(unique(user))),  by = 
     ##      course                     level school_year   mcq unique_users
     ##  1:  French    Pre-vocational\n(vmbo)       18/19 FALSE         4568
     ##  2:  French    Pre-vocational\n(vmbo)       18/19  TRUE         4949
-    ##  3:  French    Pre-vocational\n(vmbo)       19/20 FALSE         5312
+    ##  3:  French    Pre-vocational\n(vmbo)       19/20 FALSE         5311
     ##  4:  French    Pre-vocational\n(vmbo)       19/20  TRUE         5610
     ##  5:  French General secondary\n(havo)       18/19 FALSE         9853
     ##  6:  French General secondary\n(havo)       18/19  TRUE        10326
-    ##  7:  French General secondary\n(havo)       19/20 FALSE        12198
-    ##  8:  French General secondary\n(havo)       19/20  TRUE        12608
+    ##  7:  French General secondary\n(havo)       19/20 FALSE        12196
+    ##  8:  French General secondary\n(havo)       19/20  TRUE        12605
     ##  9:  French     Pre-university\n(vwo)       18/19 FALSE         6078
     ## 10:  French     Pre-university\n(vwo)       18/19  TRUE         6270
-    ## 11:  French     Pre-university\n(vwo)       19/20 FALSE         7948
-    ## 12:  French     Pre-university\n(vwo)       19/20  TRUE         8142
+    ## 11:  French     Pre-university\n(vwo)       19/20 FALSE         7945
+    ## 12:  French     Pre-university\n(vwo)       19/20  TRUE         8139
     ## 13:  German General secondary\n(havo)       18/19 FALSE          437
     ## 14:  German General secondary\n(havo)       18/19  TRUE          439
     ## 15:  German     Pre-university\n(vwo)       18/19 FALSE          382
@@ -797,9 +824,9 @@ accuracy_level_by_week_and_user[, .(unique_users = length(unique(user))),  by = 
     ## 19:  German General secondary\n(havo)       19/20 FALSE          421
     ## 20:  German General secondary\n(havo)       19/20  TRUE          421
     ## 21: English    Pre-vocational\n(vmbo)       18/19  TRUE        34520
-    ## 22: English    Pre-vocational\n(vmbo)       19/20  TRUE        37148
+    ## 22: English    Pre-vocational\n(vmbo)       19/20  TRUE        37146
     ## 23: English General secondary\n(havo)       18/19  TRUE        16593
-    ## 24: English General secondary\n(havo)       19/20  TRUE        16810
+    ## 24: English General secondary\n(havo)       19/20  TRUE        16806
     ## 25: English     Pre-university\n(vwo)       18/19  TRUE         7132
     ## 26: English     Pre-university\n(vwo)       19/20  TRUE         7858
     ## 27: English                     Other       18/19  TRUE          698
@@ -848,13 +875,23 @@ p_acc_level
 
     ## Warning: Removed 20 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-36-1.png)<!-- -->
 
 ``` r
 ggsave("../output/acc_by_question_type_level.pdf", width = 9, height = 5)
 ```
 
     ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_level.eps", width = 9, height = 5)
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/acc_by_question_type_level.png", width = 9, height = 5)
@@ -889,27 +926,27 @@ accuracy_year_by_week_and_user[, .(unique_users = length(unique(user))),  by = .
     ##  1:  French    Year 3/4       18/19 FALSE         2249
     ##  2:  French    Year 3/4       18/19  TRUE         2467
     ##  3:  French    Year 3/4       19/20 FALSE         4517
-    ##  4:  French    Year 3/4       19/20  TRUE         4768
+    ##  4:  French    Year 3/4       19/20  TRUE         4767
     ##  5:  French      Year 1       18/19 FALSE        11856
     ##  6:  French      Year 1       18/19  TRUE        12281
-    ##  7:  French      Year 1       19/20 FALSE        10922
-    ##  8:  French      Year 1       19/20  TRUE        11206
+    ##  7:  French      Year 1       19/20 FALSE        10919
+    ##  8:  French      Year 1       19/20  TRUE        11204
     ##  9:  French      Year 2       18/19 FALSE         6353
     ## 10:  French      Year 2       18/19  TRUE         6750
-    ## 11:  French      Year 2       19/20 FALSE         9968
-    ## 12:  French      Year 2       19/20  TRUE        10333
+    ## 11:  French      Year 2       19/20 FALSE         9963
+    ## 12:  French      Year 2       19/20  TRUE        10328
     ## 13:  German Tweede Fase       18/19 FALSE          818
     ## 14:  German Tweede Fase       18/19  TRUE          817
     ## 15:  German Tweede Fase       19/20 FALSE         1036
     ## 16:  German Tweede Fase       19/20  TRUE         1037
     ## 17: English      Year 1       18/19  TRUE        20831
-    ## 18: English      Year 1       19/20  TRUE        19463
+    ## 18: English      Year 1       19/20  TRUE        19461
     ## 19: English      Year 3       18/19  TRUE        14280
-    ## 20: English      Year 3       19/20  TRUE        16313
+    ## 20: English      Year 3       19/20  TRUE        16312
     ## 21: English      Year 2       18/19  TRUE        17620
-    ## 22: English      Year 2       19/20  TRUE        20128
+    ## 22: English      Year 2       19/20  TRUE        20125
     ## 23: English      Year 4       18/19  TRUE         5900
-    ## 24: English      Year 4       19/20  TRUE         6247
+    ## 24: English      Year 4       19/20  TRUE         6246
     ## 25: English      Year 1       18/19 FALSE          110
     ## 26: English      Year 1       19/20 FALSE           72
     ##      course        year school_year   mcq unique_users
@@ -952,13 +989,23 @@ p_acc_year
 
     ## Warning: Removed 14 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-41-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-40-1.png)<!-- -->
 
 ``` r
 ggsave("../output/acc_by_question_type_year.pdf", width = 9, height = 5)
 ```
 
     ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/acc_by_question_type_year.eps", width = 9, height = 5)
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/acc_by_question_type_year.png", width = 9, height = 5)
@@ -1157,7 +1204,7 @@ ggplot(acc_fit, aes(x = period, y = accuracy, colour = school_year, lty = mcq, g
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-45-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-44-1.png)<!-- -->
 
 Empirical
 means:
@@ -1174,12 +1221,12 @@ accuracy_mean
     ##  4: during-lockdown       18/19  TRUE 0.9321542  0.05725342
     ##  5:   post-lockdown       18/19 FALSE 0.7740634  0.18808125
     ##  6:   post-lockdown       18/19  TRUE 0.9298982  0.06057743
-    ##  7:    pre-lockdown       19/20 FALSE 0.7747315  0.17771071
-    ##  8:    pre-lockdown       19/20  TRUE 0.9321531  0.05262399
-    ##  9: during-lockdown       19/20 FALSE 0.8363835  0.15253436
-    ## 10: during-lockdown       19/20  TRUE 0.9251013  0.05436634
-    ## 11:   post-lockdown       19/20 FALSE 0.8198012  0.17941968
-    ## 12:   post-lockdown       19/20  TRUE 0.9199978  0.06127651
+    ##  7:    pre-lockdown       19/20 FALSE 0.7748409  0.17764395
+    ##  8:    pre-lockdown       19/20  TRUE 0.9321703  0.05260872
+    ##  9: during-lockdown       19/20 FALSE 0.8369730  0.15166914
+    ## 10: during-lockdown       19/20  TRUE 0.9251763  0.05434129
+    ## 11:   post-lockdown       19/20 FALSE 0.8189800  0.18159554
+    ## 12:   post-lockdown       19/20  TRUE 0.9204220  0.06260106
 
 ``` r
 ggplot(accuracy_mean, aes(x = period, y = accuracy, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
@@ -1189,7 +1236,7 @@ ggplot(accuracy_mean, aes(x = period, y = accuracy, colour = school_year, lty = 
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-47-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-46-1.png)<!-- -->
 
 ## Response time
 
@@ -1202,7 +1249,7 @@ rt <- dbGetQuery(db,
                   r.user_id AS 'user',
                   r.choices > 1 AS 'mcq',
                   r.rt AS 'rt'
-                  FROM 'responses' r
+                  FROM 'responses_noduplicates' r
                   WHERE r.study == 0
                   AND r.correct == 1
                  "
@@ -1313,13 +1360,23 @@ p_rt
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-58-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-57-1.png)<!-- -->
 
 ``` r
 ggsave("../output/rt_by_question_type.pdf", width = 9, height = 3)
 ```
 
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type.eps", width = 9, height = 3)
+```
+
+    ## Warning: Removed 24 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/rt_by_question_type.png", width = 9, height = 3)
@@ -1428,13 +1485,23 @@ p_rt_level_year
 
     ## Warning: Removed 11 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-66-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-65-1.png)<!-- -->
 
 ``` r
 ggsave("../output/rt_by_question_type_french_level_year.pdf", width = 9, height = 3)
 ```
 
     ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_french_level_year.eps", width = 9, height = 3)
+```
+
+    ## Warning: Removed 11 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/rt_by_question_type_french_level_year.png", width = 9, height = 3)
@@ -1477,13 +1544,23 @@ p_rt_level_year
 
     ## Warning: Removed 5 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-67-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-66-1.png)<!-- -->
 
 ``` r
 ggsave("../output/rt_by_question_type_english_level_year.pdf", width = 9, height = 3)
 ```
 
     ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_english_level_year.eps", width = 9, height = 3)
+```
+
+    ## Warning: Removed 5 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/rt_by_question_type_english_level_year.png", width = 9, height = 3)
@@ -1556,13 +1633,23 @@ p_rt_level
 
     ## Warning: Removed 20 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-72-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-71-1.png)<!-- -->
 
 ``` r
 ggsave("../output/rt_by_question_type_level.pdf", width = 9, height = 5)
 ```
 
     ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_level.eps", width = 9, height = 5)
+```
+
+    ## Warning: Removed 20 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/rt_by_question_type_level.png", width = 9, height = 5)
@@ -1635,13 +1722,23 @@ p_rt_year
 
     ## Warning: Removed 14 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-77-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-76-1.png)<!-- -->
 
 ``` r
 ggsave("../output/rt_by_question_type_year.pdf", width = 9, height = 5)
 ```
 
     ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/rt_by_question_type_year.eps", width = 9, height = 5)
+```
+
+    ## Warning: Removed 14 row(s) containing missing values (geom_path).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
 
 ``` r
 ggsave("../output/rt_by_question_type_year.png", width = 9, height = 5)
@@ -1830,7 +1927,7 @@ ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = 
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-81-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-80-1.png)<!-- -->
 
 Empirical
 means:
@@ -1842,24 +1939,24 @@ rt_mean
 ```
 
     ##              period school_year   mcq  course       rt     rt_sd
-    ##  1:    pre-lockdown       18/19  TRUE English 2211.323 2572.3131
-    ##  2:    pre-lockdown       18/19  TRUE  French 2341.094  581.5368
-    ##  3:    pre-lockdown       18/19 FALSE  French 2461.292 9161.1828
-    ##  4: during-lockdown       18/19  TRUE English 2202.397 1123.5965
-    ##  5: during-lockdown       18/19  TRUE  French 2369.624 5658.9356
-    ##  6: during-lockdown       18/19 FALSE  French 2434.324 7199.2482
+    ##  1:    pre-lockdown       19/20 FALSE  French 2441.304 4577.4682
+    ##  2:    pre-lockdown       19/20  TRUE  French 2361.956 1002.6358
+    ##  3:    pre-lockdown       19/20  TRUE English 2224.106  822.6467
+    ##  4: during-lockdown       19/20  TRUE English 2200.428  603.3756
+    ##  5: during-lockdown       19/20 FALSE  French 2709.270 3576.3899
+    ##  6: during-lockdown       19/20  TRUE  French 2360.277 1374.4151
     ##  7:   post-lockdown       18/19  TRUE English 2234.020 1106.6481
     ##  8:   post-lockdown       18/19  TRUE  French 2364.000 2226.5155
     ##  9:   post-lockdown       18/19 FALSE  French 2217.881 1548.1445
-    ## 10:    pre-lockdown       19/20  TRUE English 2223.827  822.4487
-    ## 11:    pre-lockdown       19/20  TRUE  French 2361.385 1001.8694
-    ## 12:    pre-lockdown       19/20 FALSE  French 2433.140 4508.4740
-    ## 13: during-lockdown       19/20  TRUE English 2200.052  600.2422
-    ## 14: during-lockdown       19/20  TRUE  French 2359.652 1372.3181
-    ## 15: during-lockdown       19/20 FALSE  French 2707.991 3572.8363
-    ## 16:   post-lockdown       19/20  TRUE English 2214.307  712.7022
-    ## 17:   post-lockdown       19/20  TRUE  French 2318.039  560.3395
-    ## 18:   post-lockdown       19/20 FALSE  French 2713.515 2863.3969
+    ## 10:    pre-lockdown       18/19 FALSE  French 2461.292 9161.1828
+    ## 11:    pre-lockdown       18/19  TRUE  French 2341.094  581.5368
+    ## 12:    pre-lockdown       18/19  TRUE English 2211.323 2572.3131
+    ## 13:   post-lockdown       19/20  TRUE English 2215.619  720.8126
+    ## 14:   post-lockdown       19/20  TRUE  French 2313.358  561.6664
+    ## 15:   post-lockdown       19/20 FALSE  French 2820.872 8731.1647
+    ## 16: during-lockdown       18/19  TRUE English 2202.397 1123.5965
+    ## 17: during-lockdown       18/19 FALSE  French 2434.324 7199.2482
+    ## 18: during-lockdown       18/19  TRUE  French 2369.624 5658.9356
 
 ``` r
 ggplot(rt_mean, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
@@ -1870,7 +1967,7 @@ ggplot(rt_mean, aes(x = period, y = rt, colour = school_year, lty = mcq, group =
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-83-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-82-1.png)<!-- -->
 
 ## Combination plot
 
@@ -1904,10 +2001,18 @@ plot_grid(
     
     ## Warning: Removed 24 row(s) containing missing values (geom_path).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-85-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-84-1.png)<!-- -->
 
 ``` r
 ggsave("../output/combi_acc_rt.pdf", width = 9, height = 3.5)
+ggsave("../output/combi_acc_rt.eps", width = 9, height = 3.5)
+```
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
+
+``` r
 ggsave("../output/combi_acc_rt.png", width = 9, height = 3.5)
 ```
 
@@ -1923,7 +2028,7 @@ progress <- dbGetQuery(db,
                         r.method AS 'method',
                         DATE(r.date + 3600, 'unixepoch') AS 'doy',
                         COUNT(*) AS 'trials'
-                        FROM 'responses' r
+                        FROM 'responses_noduplicates' r
                         GROUP BY r.method,
                         r.book_info_id,
                         DATE(r.date + 3600, 'unixepoch');"
@@ -2138,11 +2243,11 @@ p_progress_french <- plot_grid(p_french_y1, p_french_y2, p_french_y3,
 
     ## Warning: Removed 48 rows containing missing values (position_stack).
 
+    ## Warning: Removed 40 rows containing missing values (geom_col).
+
+    ## Warning: Removed 46 rows containing missing values (position_stack).
+
     ## Warning: Removed 41 rows containing missing values (geom_col).
-
-    ## Warning: Removed 47 rows containing missing values (position_stack).
-
-    ## Warning: Removed 42 rows containing missing values (geom_col).
 
     ## Warning: Removed 24 rows containing missing values (position_stack).
 
@@ -2152,10 +2257,18 @@ p_progress_french <- plot_grid(p_french_y1, p_french_y2, p_french_y3,
 p_progress_french
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-99-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-98-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_french.eps", width = 9, height = 9)
+```
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
+
+``` r
 ggsave("../output/progress_french.png", width = 9, height = 6)
 ```
 
@@ -2187,7 +2300,7 @@ ggplot(progress_lockdown[course == "French"], aes(x = school_year, y = prop, fil
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-101-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-100-1.png)<!-- -->
 
 Perform a chi-square test of homogeneity to determine whether school
 years are significantly different.
@@ -2213,63 +2326,63 @@ for (y in sort(unique(progress_lockdown$year))) {
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 27254, df = 5, p-value < 2.2e-16
+    ## X-squared = 26799, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 1 General secondary (havo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 218921, df = 5, p-value < 2.2e-16
+    ## X-squared = 229477, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 1 Pre-university (vwo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 38951, df = 5, p-value < 2.2e-16
+    ## X-squared = 40312, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 2 Pre-vocational (vmbo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 12940, df = 5, p-value < 2.2e-16
+    ## X-squared = 13882, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 2 General secondary (havo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 50301, df = 5, p-value < 2.2e-16
+    ## X-squared = 50486, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 2 Pre-university (vwo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 44901, df = 5, p-value < 2.2e-16
+    ## X-squared = 46882, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 3/4 Pre-vocational (vmbo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 30099, df = 7, p-value < 2.2e-16
+    ## X-squared = 30269, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "French Year 3/4 General secondary (havo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 22949, df = 5, p-value < 2.2e-16
+    ## X-squared = 23169, df = 5, p-value < 2.2e-16
     ## 
     ## [1] "French Year 3/4 Pre-university (vwo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 21144, df = 5, p-value < 2.2e-16
+    ## X-squared = 21545, df = 5, p-value < 2.2e-16
 
 Conclusion: all tests indicate a difference in proportions between
 school years (p \<\< 0.001).
@@ -2294,7 +2407,7 @@ ggplot(progress_lockdown[school_year == "19/20" & course == "French"], aes(x = c
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-103-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-102-1.png)<!-- -->
 
 Are these changes really important? We may expect a certain amount of
 fluctuation between any pair of school years. We don’t have data from
@@ -2347,9 +2460,9 @@ ggplot(prop_change_window, aes(x = prop_change * 100, y = window, group = window
   theme_paper
 ```
 
-    ## Picking joint bandwidth of 0.583
+    ## Picking joint bandwidth of 0.584
 
-![](02_performance_files/figure-gfm/unnamed-chunk-106-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-105-1.png)<!-- -->
 
 Compare the aggregated density to the changes during the lockdown
 period:
@@ -2367,7 +2480,7 @@ ggplot(prop_change_combined, aes(x = prop_change, colour = period)) +
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-107-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-106-1.png)<!-- -->
 
 ``` r
 prop_change_sd <- prop_change_window[, .(sd = sd(prop_change) * 100), by = .(course, year, level)]
@@ -2395,10 +2508,11 @@ p_change_french <- ggplot(progress_lockdown[school_year == "19/20" & course == "
 p_change_french
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-109-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-108-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_change_french.pdf", width = 5, height = 4)
+ggsave("../output/progress_change_french.eps", width = 5, height = 4)
 ggsave("../output/progress_change_french.png", width = 9, height = 3)
 ```
 
@@ -2416,20 +2530,28 @@ plot_grid(p_french_y1, p_french_y2, p_french_y3, p_change_french,
 
     ## Warning: Removed 48 rows containing missing values (position_stack).
 
+    ## Warning: Removed 40 rows containing missing values (geom_col).
+
+    ## Warning: Removed 46 rows containing missing values (position_stack).
+
     ## Warning: Removed 41 rows containing missing values (geom_col).
-
-    ## Warning: Removed 47 rows containing missing values (position_stack).
-
-    ## Warning: Removed 42 rows containing missing values (geom_col).
 
     ## Warning: Removed 24 rows containing missing values (position_stack).
 
     ## Warning: Removed 23 rows containing missing values (geom_col).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-110-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-109-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_combi_french.eps", width = 9, height = 9)
+```
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
+
+``` r
 ggsave("../output/progress_combi_french.png", width = 9, height = 9)
 ```
 
@@ -2518,11 +2640,11 @@ plot_grid(
 
     ## Warning: Removed 48 rows containing missing values (position_stack).
 
+    ## Warning: Removed 40 rows containing missing values (geom_col).
+
+    ## Warning: Removed 46 rows containing missing values (position_stack).
+
     ## Warning: Removed 41 rows containing missing values (geom_col).
-
-    ## Warning: Removed 47 rows containing missing values (position_stack).
-
-    ## Warning: Removed 42 rows containing missing values (geom_col).
 
     ## Warning: Removed 24 rows containing missing values (position_stack).
 
@@ -2546,7 +2668,7 @@ plot_grid(
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-111-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-110-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_alt_french.pdf", width = 9, height = 9)
@@ -2571,11 +2693,37 @@ ggsave("../output/progress_combi_alt_french.pdf", width = 9, height = 9)
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
 ``` r
-ggsave("../output/progress_combi_alt_french.png", width = 9, height = 9)
+ggsave("../output/progress_combi_alt_french.eps", width = 9, height = 9)
 ```
 
     ## Warning: Removed 1 rows containing missing values (geom_text).
     
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
+
+``` r
+ggsave("../output/progress_combi_alt_french.png", width = 9, height = 9)
+```
+
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+
     ## Warning: Removed 1 rows containing missing values (geom_text).
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
@@ -2696,9 +2844,9 @@ p_progress_english <- plot_grid(p_english_y1, p_english_y2, p_english_y3, p_engl
 
     ## Warning: Removed 61 rows containing missing values (geom_col).
 
-    ## Warning: Removed 71 rows containing missing values (position_stack).
+    ## Warning: Removed 69 rows containing missing values (position_stack).
 
-    ## Warning: Removed 61 rows containing missing values (geom_col).
+    ## Warning: Removed 60 rows containing missing values (geom_col).
 
     ## Warning: Removed 49 rows containing missing values (position_stack).
 
@@ -2712,10 +2860,18 @@ p_progress_english <- plot_grid(p_english_y1, p_english_y2, p_english_y3, p_engl
 p_progress_english
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-112-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-111-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_english.pdf", width = 9, height = 9)
+ggsave("../output/progress_english.eps", width = 9, height = 9)
+```
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
+
+``` r
 ggsave("../output/progress_english.png", width = 9, height = 9)
 ```
 
@@ -2735,7 +2891,7 @@ ggplot(progress_lockdown[course == "English" & level != "Other"], aes(x = school
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-113-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-112-1.png)<!-- -->
 
 Change between school
 years:
@@ -2758,10 +2914,11 @@ p_change_english <- ggplot(progress_lockdown[school_year == "19/20" & course == 
 p_change_english 
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-114-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-113-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
+ggsave("../output/progress_change_english.eps", width = 9, height = 6)
 ggsave("../output/progress_change_english.png", width = 9, height = 6)
 ```
 
@@ -2789,56 +2946,56 @@ for (y in sort(unique(progress_lockdown$year))) {
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 1907.7, df = 7, p-value < 2.2e-16
+    ## X-squared = 1902.8, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 1 Pre-vocational (vmbo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 57847, df = 7, p-value < 2.2e-16
+    ## X-squared = 59650, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 1 General secondary (havo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 237876, df = 7, p-value < 2.2e-16
+    ## X-squared = 236327, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 1 Pre-university (vwo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 47518, df = 7, p-value < 2.2e-16
+    ## X-squared = 47589, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 2 Other"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 4115.7, df = 7, p-value < 2.2e-16
+    ## X-squared = 4117.3, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 2 Pre-vocational (vmbo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 25974, df = 8, p-value < 2.2e-16
+    ## X-squared = 26122, df = 8, p-value < 2.2e-16
     ## 
     ## [1] "English Year 2 General secondary (havo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 15326, df = 8, p-value < 2.2e-16
+    ## X-squared = 16303, df = 8, p-value < 2.2e-16
     ## 
     ## [1] "English Year 2 Pre-university (vwo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 81417, df = 7, p-value < 2.2e-16
+    ## X-squared = 84027, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 3 Other"
     ## 
@@ -2852,28 +3009,28 @@ for (y in sort(unique(progress_lockdown$year))) {
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 19636, df = 6, p-value < 2.2e-16
+    ## X-squared = 20169, df = 6, p-value < 2.2e-16
     ## 
     ## [1] "English Year 3 General secondary (havo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 59552, df = 8, p-value < 2.2e-16
+    ## X-squared = 60993, df = 8, p-value < 2.2e-16
     ## 
     ## [1] "English Year 3 Pre-university (vwo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 41150, df = 7, p-value < 2.2e-16
+    ## X-squared = 41120, df = 7, p-value < 2.2e-16
     ## 
     ## [1] "English Year 4 Pre-vocational (vmbo)"
     ## 
     ##  Pearson's Chi-squared test
     ## 
     ## data:  dcast(d, school_year ~ chapter_simple, value.var = "trials",     fill = 0)[, `:=`(school_year, NULL)]
-    ## X-squared = 20200, df = 5, p-value < 2.2e-16
+    ## X-squared = 20187, df = 5, p-value < 2.2e-16
 
 Conclusion: all tests indicate a difference in proportions between
 school years (p \<\< 0.001).
@@ -2993,9 +3150,9 @@ plot_grid(
 
     ## Warning: Removed 61 rows containing missing values (geom_col).
 
-    ## Warning: Removed 71 rows containing missing values (position_stack).
+    ## Warning: Removed 69 rows containing missing values (position_stack).
 
-    ## Warning: Removed 61 rows containing missing values (geom_col).
+    ## Warning: Removed 60 rows containing missing values (geom_col).
 
     ## Warning: Removed 49 rows containing missing values (position_stack).
 
@@ -3029,7 +3186,7 @@ plot_grid(
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-116-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-115-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_alt_english.pdf", width = 9, height = 11)
@@ -3060,11 +3217,43 @@ ggsave("../output/progress_combi_alt_english.pdf", width = 9, height = 11)
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
 ``` r
-ggsave("../output/progress_combi_alt_english.png", width = 9, height = 11)
+ggsave("../output/progress_combi_alt_english.eps", width = 9, height = 11)
 ```
 
     ## Warning: Removed 1 rows containing missing values (geom_text).
     
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+    
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+
+    ## Warning in grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height,
+    ## resolveHJust(x$just, : semi-transparency is not supported on this device:
+    ## reported only once per page
+
+``` r
+ggsave("../output/progress_combi_alt_english.png", width = 9, height = 11)
+```
+
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+
     ## Warning: Removed 1 rows containing missing values (geom_text).
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
@@ -3121,12 +3310,12 @@ sessionInfo()
     ##  [1] tidyselect_0.2.5    xfun_0.21           purrr_0.3.2        
     ##  [4] splines_3.6.3       lattice_0.20-41     colorspace_1.4-1   
     ##  [7] vctrs_0.2.2         htmltools_0.3.6     viridisLite_0.3.0  
-    ## [10] yaml_2.2.0          blob_1.2.1          rlang_0.4.4        
+    ## [10] yaml_2.2.0          blob_1.2.1          rlang_0.4.10       
     ## [13] pillar_1.4.2        nloptr_1.2.1        glue_1.3.1         
     ## [16] withr_2.3.0         bit64_0.9-7         plyr_1.8.4         
     ## [19] lifecycle_0.1.0     stringr_1.4.0       munsell_0.5.0      
     ## [22] gtable_0.3.0        evaluate_0.14       memoise_1.1.0      
-    ## [25] labeling_0.3        knitr_1.23          Rcpp_1.0.2         
+    ## [25] labeling_0.3        knitr_1.23          Rcpp_1.0.6         
     ## [28] scales_1.0.0        bit_1.1-14          digest_0.6.19      
     ## [31] stringi_1.4.3       dplyr_0.8.3         numDeriv_2016.8-1.1
     ## [34] tools_3.6.3         magrittr_1.5        tibble_2.1.3       

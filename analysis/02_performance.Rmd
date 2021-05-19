@@ -38,8 +38,10 @@ theme_paper <- theme_classic(base_size = 12) +
 School closure and opening dates
 
 Sources:
-- https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport
-- https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open
+
+  - https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport
+  - https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open
+
 ```{r}
 date_schools_closed <- as.POSIXct("2020-03-16")
 date_schools_opened <- as.POSIXct("2020-06-02")
@@ -102,7 +104,7 @@ Book information, such as the course year, book title, and chapter, are stored i
 Preview first 10 rows
 ```{r}
 db <- db_connect()
-responses_top <- dbGetQuery(db, "SELECT * FROM responses LIMIT 10")
+responses_top <- dbGetQuery(db, "SELECT * FROM responses_noduplicates LIMIT 10")
 responses_top
 
 book_info_top <- dbGetQuery(db, "SELECT * FROM book_info LIMIT 10")
@@ -132,7 +134,7 @@ correct <- dbGetQuery(db,
                       r.choices > 1 AS 'mcq',
                       r.correct AS 'correct',
                       COUNT(*) AS 'n'
-                      FROM 'responses' r
+                      FROM 'responses_noduplicates' r
                       WHERE r.study == 0
                       GROUP BY r.method,
                       DATE(r.date + 3600, 'unixepoch'),
@@ -188,12 +190,6 @@ accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy,
 ```
 
 
-```{r}
-# accuracy_by_week_and_user <- accuracy[, .(accuracy = mean(accuracy, na.rm = TRUE)), by = .(course, school_year, doy_posix_aligned_week, user, mcq)]
-# accuracy_by_week <- accuracy_by_week_and_user[, .(accuracy_mean = mean(accuracy, na.rm = TRUE),
-#                               accuracy_se = sd(accuracy, na.rm = TRUE)/sqrt(.N), n = .N), by = .(course, school_year, doy_posix_aligned_week, mcq)]
-```
-
 Add question type labels:
 ```{r}
 accuracy_by_week[, question_type := ifelse(mcq == TRUE, "Multiple\nchoice", "Open\nanswer")]
@@ -231,6 +227,7 @@ p_acc <- ggplot(accuracy_by_week[(course == "English" & mcq == TRUE) | course ==
   theme_paper
 p_acc
 ggsave("../output/acc_by_question_type.pdf", width = 9, height = 3)
+ggsave("../output/acc_by_question_type.eps", width = 9, height = 3)
 ggsave("../output/acc_by_question_type.png", width = 9, height = 3)
 ```
 
@@ -247,7 +244,7 @@ correct_strat <- dbGetQuery(db,
                       r.choices > 1 AS 'mcq',
                       r.correct AS 'correct',
                       COUNT(*) AS 'n'
-                      FROM 'responses' r
+                      FROM 'responses_noduplicates' r
                       WHERE r.study == 0
                       GROUP BY r.method,
                       r.book_info_id,
@@ -391,6 +388,7 @@ p_acc_level_year <- ggplot(accuracy_strat_by_week[course == "French" & level != 
 p_acc_level_year
 
 ggsave("../output/acc_by_question_type_french_level_year.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_french_level_year.eps", width = 9, height = 5)
 ggsave("../output/acc_by_question_type_french_level_year.png", width = 9, height = 5)
 ```
 
@@ -427,6 +425,7 @@ p_acc_level_year <- ggplot(accuracy_strat_by_week[course == "English" & level !=
 p_acc_level_year
 
 ggsave("../output/acc_by_question_type_english_level_year.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_english_level_year.eps", width = 9, height = 5)
 ggsave("../output/acc_by_question_type_english_level_year.png", width = 9, height = 5)
 ```
 
@@ -484,6 +483,7 @@ p_acc_level <- ggplot(accuracy_level_by_week[((course == "English" & question_ty
 p_acc_level
 
 ggsave("../output/acc_by_question_type_level.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_level.eps", width = 9, height = 5)
 ggsave("../output/acc_by_question_type_level.png", width = 9, height = 5)
 ```
 
@@ -542,6 +542,7 @@ p_acc_year <- ggplot(accuracy_year_by_week[((course == "English" & question_type
 p_acc_year
 
 ggsave("../output/acc_by_question_type_year.pdf", width = 9, height = 5)
+ggsave("../output/acc_by_question_type_year.eps", width = 9, height = 5)
 ggsave("../output/acc_by_question_type_year.png", width = 9, height = 5)
 ```
 
@@ -653,7 +654,7 @@ rt <- dbGetQuery(db,
                   r.user_id AS 'user',
                   r.choices > 1 AS 'mcq',
                   r.rt AS 'rt'
-                  FROM 'responses' r
+                  FROM 'responses_noduplicates' r
                   WHERE r.study == 0
                   AND r.correct == 1
                  "
@@ -757,6 +758,7 @@ p_rt <- ggplot(rt_by_week[(course == "English" & mcq == TRUE) | course == "Frenc
 p_rt
 
 ggsave("../output/rt_by_question_type.pdf", width = 9, height = 3)
+ggsave("../output/rt_by_question_type.eps", width = 9, height = 3)
 ggsave("../output/rt_by_question_type.png", width = 9, height = 3)
 ```
 
@@ -852,6 +854,7 @@ p_rt_level_year <- ggplot(rt_strat_by_week[course == "French",],
 p_rt_level_year
 
 ggsave("../output/rt_by_question_type_french_level_year.pdf", width = 9, height = 3)
+ggsave("../output/rt_by_question_type_french_level_year.eps", width = 9, height = 3)
 ggsave("../output/rt_by_question_type_french_level_year.png", width = 9, height = 3)
 ```
 
@@ -888,6 +891,7 @@ p_rt_level_year <- ggplot(rt_strat_by_week[course == "English" & question_type =
 p_rt_level_year
 
 ggsave("../output/rt_by_question_type_english_level_year.pdf", width = 9, height = 3)
+ggsave("../output/rt_by_question_type_english_level_year.eps", width = 9, height = 3)
 ggsave("../output/rt_by_question_type_english_level_year.png", width = 9, height = 3)
 ```
 
@@ -949,6 +953,7 @@ p_rt_level <- ggplot(rt_level_by_week[((course == "English" & question_type == "
 p_rt_level
 
 ggsave("../output/rt_by_question_type_level.pdf", width = 9, height = 5)
+ggsave("../output/rt_by_question_type_level.eps", width = 9, height = 5)
 ggsave("../output/rt_by_question_type_level.png", width = 9, height = 5)
 ```
 
@@ -1010,6 +1015,7 @@ p_rt_year <- ggplot(rt_year_by_week[((course == "English" & question_type == "Mu
 p_rt_year
 
 ggsave("../output/rt_by_question_type_year.pdf", width = 9, height = 5)
+ggsave("../output/rt_by_question_type_year.eps", width = 9, height = 5)
 ggsave("../output/rt_by_question_type_year.png", width = 9, height = 5)
 ```
 
@@ -1121,6 +1127,7 @@ plot_grid(
 )
 
 ggsave("../output/combi_acc_rt.pdf", width = 9, height = 3.5)
+ggsave("../output/combi_acc_rt.eps", width = 9, height = 3.5)
 ggsave("../output/combi_acc_rt.png", width = 9, height = 3.5)
 ```
 
@@ -1137,7 +1144,7 @@ progress <- dbGetQuery(db,
                         r.method AS 'method',
                         DATE(r.date + 3600, 'unixepoch') AS 'doy',
                         COUNT(*) AS 'trials'
-                        FROM 'responses' r
+                        FROM 'responses_noduplicates' r
                         GROUP BY r.method,
                         r.book_info_id,
                         DATE(r.date + 3600, 'unixepoch');"
@@ -1322,6 +1329,7 @@ p_progress_french <- plot_grid(p_french_y1, p_french_y2, p_french_y3,
 p_progress_french
 
 ggsave("../output/progress_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_french.eps", width = 9, height = 9)
 ggsave("../output/progress_french.png", width = 9, height = 6)
 ```
 
@@ -1470,6 +1478,7 @@ p_change_french <- ggplot(progress_lockdown[school_year == "19/20" & course == "
 p_change_french
 
 ggsave("../output/progress_change_french.pdf", width = 5, height = 4)
+ggsave("../output/progress_change_french.eps", width = 5, height = 4)
 ggsave("../output/progress_change_french.png", width = 9, height = 3)
 ```
 
@@ -1484,6 +1493,7 @@ plot_grid(p_french_y1, p_french_y2, p_french_y3, p_change_french,
           scale = .95)
 
 ggsave("../output/progress_combi_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_combi_french.eps", width = 9, height = 9)
 ggsave("../output/progress_combi_french.png", width = 9, height = 9)
 ```
 
@@ -1571,6 +1581,7 @@ plot_grid(
           scale = .95)
 
 ggsave("../output/progress_combi_alt_french.pdf", width = 9, height = 9)
+ggsave("../output/progress_combi_alt_french.eps", width = 9, height = 9)
 ggsave("../output/progress_combi_alt_french.png", width = 9, height = 9)
 ```
 
@@ -1674,6 +1685,7 @@ p_progress_english <- plot_grid(p_english_y1, p_english_y2, p_english_y3, p_engl
 p_progress_english
 
 ggsave("../output/progress_english.pdf", width = 9, height = 9)
+ggsave("../output/progress_english.eps", width = 9, height = 9)
 ggsave("../output/progress_english.png", width = 9, height = 9)
 ```
 
@@ -1711,6 +1723,7 @@ p_change_english <- ggplot(progress_lockdown[school_year == "19/20" & course == 
 p_change_english 
 
 ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
+ggsave("../output/progress_change_english.eps", width = 9, height = 6)
 ggsave("../output/progress_change_english.png", width = 9, height = 6)
 ```
 
@@ -1844,6 +1857,7 @@ plot_grid(
           scale = .95)
 
 ggsave("../output/progress_combi_alt_english.pdf", width = 9, height = 11)
+ggsave("../output/progress_combi_alt_english.eps", width = 9, height = 11)
 ggsave("../output/progress_combi_alt_english.png", width = 9, height = 11)
 ```
 

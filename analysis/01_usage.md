@@ -1,7 +1,7 @@
 SlimStampen Usage During Lockdown
 ================
 Maarten van der Velde
-Last updated: 2021-03-04
+Last updated: 2021-05-19
 
 # Setup
 
@@ -38,12 +38,15 @@ theme_paper <- theme_classic(base_size = 12) +
         panel.grid.major.y = element_line(colour = "grey92"))
 ```
 
-School closure and opening dates
+School closure and opening
+    dates
 
-Sources: -
-<https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport>
--
-<https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open>
+Sources:
+
+  - <https://www.rijksoverheid.nl/actueel/nieuws/2020/03/15/aanvullende-maatregelen-onderwijs-horeca-sport>
+  - <https://www.rijksoverheid.nl/actueel/nieuws/2020/05/19/onderwijs-gaat-stap-voor-stap-open>
+
+<!-- end list -->
 
 ``` r
 date_schools_closed <- as.POSIXct("2020-03-16")
@@ -109,54 +112,54 @@ Preview first 10 rows
 
 ``` r
 db <- db_connect()
-responses_top <- dbGetQuery(db, "SELECT * FROM responses LIMIT 10")
+responses_top <- dbGetQuery(db, "SELECT * FROM responses_noduplicates LIMIT 10")
 responses_top
 ```
 
-    ##          date                              user_id          method
-    ## 1  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 2  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 3  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 4  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 5  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 6  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 7  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 8  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 9  1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ## 10 1539683361 08a841d7-e150-4c57-8d3b-8a174ce8c06a Stepping Stones
-    ##    start_time   rt duration fact_id correct               answer choices
-    ## 1         304 2412     2413       5       1                 fout       4
-    ## 2        3783  893      893       5       1                 fout       4
-    ## 3        5749 1830     1830       6       1           bergachtig       4
-    ## 4        8665 1625     1625       6       1           bergachtig       4
-    ## 5       11364 1115     1116       2       1                 rand       4
-    ## 6       13595 2697     2697       4       1 vergeven en vergeten       4
-    ## 7       17379 1475     1475       2       1                 rand       4
-    ## 8       19929 2749     2749       4       1 vergeven en vergeten       4
-    ## 9       23825 2851     2851       1       1          je gedragen       4
-    ## 10      27927 1940     1940       8       1           bouwvallig       4
+    ##          date                              user_id         method
+    ## 1  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 2  1574812553 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 3  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 4  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 5  1574812553 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 6  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 7  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 8  1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 9  1574812553 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ## 10 1574814365 000046f0-8731-42cd-95e6-ef427b76b156 Grandes Lignes
+    ##    start_time    rt duration fact_id correct           answer choices
+    ## 1          23  1569     4956       9       1     avoir raison       1
+    ## 2          33  4698     6967       6       1           minuit       1
+    ## 3          34  2319    10978      10       1  l'enfant unique       1
+    ## 4         224  1489     1490       7       1           waarom       4
+    ## 5         266  9249     9249       5       1            mardi       4
+    ## 6         267  1420     1420       2       1          op tijd       4
+    ## 7         269 55438    55438       5       1     bient&#244;t       4
+    ## 8         301  2358     2358       4       1 snel, binnenkort       4
+    ## 9         334  2039     2039       8       1      de afspraak       4
+    ## 10       2733  1736     1736       2       1          op tijd       4
     ##    backspace_used backspace_used_first study answer_language subsession
-    ## 1              NA                   NA     0              NL          1
-    ## 2              NA                   NA     0              NL          1
-    ## 3              NA                   NA     0              NL          1
-    ## 4              NA                   NA     0              NL          1
-    ## 5              NA                   NA     0              NL          1
-    ## 6              NA                   NA     0              NL          1
-    ## 7              NA                   NA     0              NL          1
-    ## 8              NA                   NA     0              NL          1
-    ## 9              NA                   NA     0              NL          1
+    ## 1               0                    0     0               X          2
+    ## 2               0                    0     0               X          2
+    ## 3               1                    1     0               X          2
+    ## 4              NA                   NA     1              NL          1
+    ## 5              NA                   NA     0               X          3
+    ## 6              NA                   NA     1              NL          1
+    ## 7              NA                   NA     0               X          3
+    ## 8              NA                   NA     1              NL          1
+    ## 9              NA                   NA     1              NL          1
     ## 10             NA                   NA     0              NL          1
     ##                        book_info_id
-    ## 1  2562c0861746d69665bc006db57d61d2
-    ## 2  2562c0861746d69665bc006db57d61d2
-    ## 3  2562c0861746d69665bc006db57d61d2
-    ## 4  2562c0861746d69665bc006db57d61d2
-    ## 5  2562c0861746d69665bc006db57d61d2
-    ## 6  2562c0861746d69665bc006db57d61d2
-    ## 7  2562c0861746d69665bc006db57d61d2
-    ## 8  2562c0861746d69665bc006db57d61d2
-    ## 9  2562c0861746d69665bc006db57d61d2
-    ## 10 2562c0861746d69665bc006db57d61d2
+    ## 1  b7fd0c6450a543df0abce795286cc0d9
+    ## 2  b7fd0c6450a543df0abce795286cc0d9
+    ## 3  b7fd0c6450a543df0abce795286cc0d9
+    ## 4  b7fd0c6450a543df0abce795286cc0d9
+    ## 5  b7fd0c6450a543df0abce795286cc0d9
+    ## 6  b7fd0c6450a543df0abce795286cc0d9
+    ## 7  b7fd0c6450a543df0abce795286cc0d9
+    ## 8  b7fd0c6450a543df0abce795286cc0d9
+    ## 9  b7fd0c6450a543df0abce795286cc0d9
+    ## 10 b7fd0c6450a543df0abce795286cc0d9
 
 ``` r
 book_info_top <- dbGetQuery(db, "SELECT * FROM book_info LIMIT 10")
@@ -196,14 +199,14 @@ Get number of trials by method, day, and user:
 
 ``` r
 db <- db_connect()
-counts <- dbGetQuery(db,"SELECT responses.method AS 'method',
-                          DATE(responses.date + 3600, 'unixepoch') AS 'doy',
-                          responses.user_id AS 'user',
+counts <- dbGetQuery(db,"SELECT r.method AS 'method',
+                          DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                          r.user_id AS 'user',
                           COUNT(*) AS 'trials'
-                          FROM 'responses'
-                          GROUP BY responses.method,
-                          DATE(responses.date  + 3600, 'unixepoch'),
-                          responses.user_id
+                          FROM 'responses_noduplicates' r
+                          GROUP BY r.method,
+                          DATE(r.date  + 3600, 'unixepoch'),
+                          r.user_id
                         ")
 db_disconnect(db)
 
@@ -232,11 +235,11 @@ counts[, .(unique_users = length(unique(user))), by = .(course, school_year)]
 
     ##     course school_year unique_users
     ## 1:  French       18/19        21551
-    ## 2:  French       19/20        26292
+    ## 2:  French       19/20        26287
     ## 3:  German       18/19          828
     ## 4:  German       19/20         1043
     ## 5: English       18/19        58422
-    ## 6: English       19/20        61962
+    ## 6: English       19/20        61957
 
 There was some overlap between courses/school years, so we can’t simply
 add these numbers.
@@ -261,7 +264,7 @@ counts[course %in% c("French", "English"), .(unique_users = length(unique(user))
 
     ##    school_year unique_users
     ## 1:       18/19        75695
-    ## 2:       19/20        83496
+    ## 2:       19/20        83486
 
 And total number of unique users in the French and English sample across
 both
@@ -282,11 +285,11 @@ counts[, .(total_trials = sum(trials)), by = .(course, school_year)]
 
     ##     course school_year total_trials
     ## 1:  French       18/19     14582897
-    ## 2:  French       19/20     20276843
+    ## 2:  French       19/20     19754128
     ## 3:  German       18/19       333047
-    ## 4:  German       19/20       474833
+    ## 4:  German       19/20       467449
     ## 5: English       18/19     38334387
-    ## 6: English       19/20     43072404
+    ## 6: English       19/20     42561143
 
 ## Number of trials by user
 
@@ -417,6 +420,13 @@ p_trial_hist
 
 ``` r
 ggsave("../output/trial_hist.pdf", width = 5, height = 3)
+ggsave("../output/trial_hist.eps", width = 5, height = 3)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/trial_hist.png", width = 5, height = 3)
 ```
 
@@ -457,6 +467,12 @@ p_trial_hist_line
 
 ``` r
 ggsave("../output/trial_hist_line.pdf", width = 5, height = 3)
+```
+
+    ## Warning: Removed 101 row(s) containing missing values (geom_path).
+
+``` r
+ggsave("../output/trial_hist_line.eps", width = 5, height = 3)
 ```
 
     ## Warning: Removed 101 row(s) containing missing values (geom_path).
@@ -618,6 +634,13 @@ p_user_hist
 
 ``` r
 ggsave("../output/user_hist.pdf", width = 5, height = 3)
+ggsave("../output/user_hist.eps", width = 5, height = 3)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/user_hist.png", width = 5, height = 3)
 ```
 
@@ -645,6 +668,13 @@ plot_grid(plot_grid(p_trial_hist, p_user_hist,
 
 ``` r
 ggsave("../output/combi_hist.pdf", width = 9, height = 3)
+ggsave("../output/combi_hist.eps", width = 9, height = 3)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/combi_hist.png", width = 9, height = 3)
 ```
 
@@ -654,16 +684,16 @@ Get number of trials by method, day, hour, and user:
 
 ``` r
 db <- db_connect()
-counts_by_hour <- dbGetQuery(db,"SELECT responses.method AS 'method',
-                          DATE(responses.date + 3600, 'unixepoch') AS 'doy',
-                          STRFTIME('%H', responses.date + 3600, 'unixepoch') AS 'hour',
-                          responses.user_id AS 'user',
+counts_by_hour <- dbGetQuery(db,"SELECT r.method AS 'method',
+                          DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                          STRFTIME('%H', r.date + 3600, 'unixepoch') AS 'hour',
+                          r.user_id AS 'user',
                           COUNT(*) AS 'trials'
-                          FROM 'responses'
-                          GROUP BY responses.method,
-                          DATE(responses.date + 3600, 'unixepoch'),
-                          STRFTIME('%H', responses.date + 3600, 'unixepoch'),
-                          responses.user_id
+                          FROM 'responses_noduplicates' r
+                          GROUP BY r.method,
+                          DATE(r.date + 3600, 'unixepoch'),
+                          STRFTIME('%H', r.date + 3600, 'unixepoch'),
+                          r.user_id
                         ")
 db_disconnect(db)
 
@@ -876,6 +906,7 @@ plot_grid(
 
 ``` r
 ggsave("../output/combi_heatmap.pdf", width = 9, height = 4.5)
+ggsave("../output/combi_heatmap.eps", width = 9, height = 4.5)
 ggsave("../output/combi_heatmap.png", width = 9, height = 4.5)
 ```
 
@@ -883,15 +914,16 @@ ggsave("../output/combi_heatmap.png", width = 9, height = 4.5)
 
 ``` r
 db <- db_connect()
-counts_strat <- dbGetQuery(db,"SELECT responses.method AS 'method',
-                          responses.book_info_id as 'book_info_id',
-                          DATE(responses.date + 3600, 'unixepoch') AS 'doy',
-                          responses.user_id AS 'user',
+counts_strat <- dbGetQuery(db,"SELECT r.method AS 'method',
+                          r.book_info_id as 'book_info_id',
+                          DATE(r.date + 3600, 'unixepoch') AS 'doy',
+                          r.user_id AS 'user',
                           COUNT(*) AS 'trials'
-                          FROM 'responses'
-                          GROUP BY responses.method, responses.book_info_id,
-                          DATE(responses.date + 3600, 'unixepoch'),
-                          responses.user_id
+                          FROM 'responses_noduplicates' r
+                          GROUP BY r.method,
+                          r.book_info_id,
+                          DATE(r.date + 3600, 'unixepoch'),
+                          r.user_id
                         ")
 db_disconnect(db)
 
@@ -1037,6 +1069,13 @@ ggplot(counts_strat_by_day[course == "French"],
 
 ``` r
 ggsave("../output/trial_hist_french.pdf", width = 14, height = 10)
+ggsave("../output/trial_hist_french.eps", width = 14, height = 10)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/trial_hist_french.png", width = 14, height = 10)
 ```
 
@@ -1079,6 +1118,13 @@ ggplot(counts_strat_by_day[course == "French"],
 
 ``` r
 ggsave("../output/trial_hist_french_level.pdf", width = 9, height = 5)
+ggsave("../output/trial_hist_french_level.eps", width = 9, height = 5)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/trial_hist_french_level.png", width = 9, height = 5)
 ```
 
@@ -1192,6 +1238,13 @@ ggplot(counts_strat_by_day[course == "English"],
 
 ``` r
 ggsave("../output/trial_hist_english.pdf", width = 14, height = 10)
+ggsave("../output/trial_hist_english.eps", width = 14, height = 10)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/trial_hist_english.png", width = 14, height = 10)
 ```
 
@@ -1234,6 +1287,13 @@ ggplot(counts_strat_by_day[course == "English" & level != "Other"],
 
 ``` r
 ggsave("../output/trial_hist_english_level.pdf", width = 9, height = 5)
+ggsave("../output/trial_hist_english_level.eps", width = 9, height = 5)
+```
+
+    ## Warning in grid.Call.graphics(C_polygon, x$x, x$y, index): semi-
+    ## transparency is not supported on this device: reported only once per page
+
+``` r
 ggsave("../output/trial_hist_english_level.png", width = 9, height = 5)
 ```
 
@@ -1280,7 +1340,7 @@ question_type <- dbGetQuery(db,
                       DATE(r.date + 3600, 'unixepoch') AS 'doy',
                       r.choices AS 'choices',
                       COUNT(*) AS 'n'
-                      FROM 'responses' r
+                      FROM 'responses_noduplicates' r
                       WHERE r.study == 0
                       GROUP BY r.method,
                       DATE(r.date + 3600, 'unixepoch'),
@@ -1353,11 +1413,11 @@ question_type[, .(n = sum(n)), by = .(course, mcq = choices>1, school_year)][, .
 
     ##     course school_year  perc_mcq
     ## 1:  French       18/19 0.5638592
-    ## 2:  French       19/20 0.5867748
+    ## 2:  French       19/20 0.5867324
     ## 3:  German       18/19 0.5255910
-    ## 4:  German       19/20 0.5332517
+    ## 4:  German       19/20 0.5327823
     ## 5: English       18/19 0.9998051
-    ## 6: English       19/20 0.9998742
+    ## 6: English       19/20 0.9998767
 
 There is a clear difference between the languages in the question format
 used: English uses almost exclusively 4-alternative MCQs, while French
@@ -1394,11 +1454,11 @@ sessionInfo()
     ## [1] cowplot_0.9.4     ggplot2_3.3.2     DBI_1.1.0         data.table_1.13.6
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] Rcpp_1.0.2         RColorBrewer_1.1-2 pillar_1.4.2      
+    ##  [1] Rcpp_1.0.6         RColorBrewer_1.1-2 pillar_1.4.2      
     ##  [4] compiler_3.6.3     tools_3.6.3        digest_0.6.19     
     ##  [7] bit_1.1-14         viridisLite_0.3.0  memoise_1.1.0     
     ## [10] evaluate_0.14      RSQLite_2.2.0      tibble_2.1.3      
-    ## [13] gtable_0.3.0       pkgconfig_2.0.2    rlang_0.4.4       
+    ## [13] gtable_0.3.0       pkgconfig_2.0.2    rlang_0.4.10      
     ## [16] yaml_2.2.0         xfun_0.21          withr_2.3.0       
     ## [19] stringr_1.4.0      dplyr_0.8.3        knitr_1.23        
     ## [22] vctrs_0.2.2        bit64_0.9-7        tidyselect_0.2.5  

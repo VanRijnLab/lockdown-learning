@@ -1061,61 +1061,61 @@ m_acc_summary
     ## glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e+06))
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
-    ##  4963073  4963232 -2481522  4963045   671406 
+    ##  4934770  4934930 -2467371  4934742   668527 
     ## 
     ## Scaled residuals: 
     ##      Min       1Q   Median       3Q      Max 
-    ## -23.9963  -0.9227   0.1606   1.0936  11.4371 
+    ## -22.1127  -0.9205   0.1614   1.0939  11.4403 
     ## 
     ## Random effects:
     ##  Groups Name        Variance Std.Dev.
-    ##  user   (Intercept) 0.35034  0.5919  
-    ##  course (Intercept) 0.05511  0.2348  
-    ## Number of obs: 671420, groups:  user, 133419; course, 2
+    ##  user   (Intercept) 0.34971  0.5914  
+    ##  course (Intercept) 0.05504  0.2346  
+    ## Number of obs: 668541, groups:  user, 133419; course, 2
     ## 
     ## Fixed effects:
     ##                                                 Estimate Std. Error
-    ## (Intercept)                                     1.631257   0.166016
-    ## periodduring-lockdown                           0.259227   0.002725
-    ## periodpost-lockdown                             0.150384   0.004021
-    ## school_year18/19                                0.117385   0.002566
-    ## mcqTRUE                                         0.960249   0.002088
-    ## periodduring-lockdown:school_year18/19         -0.311338   0.004409
-    ## periodpost-lockdown:school_year18/19           -0.242816   0.006325
-    ## periodduring-lockdown:mcqTRUE                  -0.328352   0.002881
-    ## periodpost-lockdown:mcqTRUE                    -0.277485   0.004397
-    ## school_year18/19:mcqTRUE                        0.003357   0.002667
-    ## periodduring-lockdown:school_year18/19:mcqTRUE  0.379504   0.004758
-    ## periodpost-lockdown:school_year18/19:mcqTRUE    0.335859   0.006970
+    ## (Intercept)                                     1.631889   0.165913
+    ## periodduring-lockdown                           0.264728   0.002760
+    ## periodpost-lockdown                             0.159475   0.004190
+    ## school_year18/19                                0.116285   0.002580
+    ## mcqTRUE                                         0.959425   0.002109
+    ## periodduring-lockdown:school_year18/19         -0.316933   0.004432
+    ## periodpost-lockdown:school_year18/19           -0.251656   0.006437
+    ## periodduring-lockdown:mcqTRUE                  -0.333631   0.002913
+    ## periodpost-lockdown:mcqTRUE                    -0.286879   0.004562
+    ## school_year18/19:mcqTRUE                        0.004370   0.002681
+    ## periodduring-lockdown:school_year18/19:mcqTRUE  0.384829   0.004778
+    ## periodpost-lockdown:school_year18/19:mcqTRUE    0.344909   0.007078
     ##                                                 z value Pr(>|z|)    
-    ## (Intercept)                                       9.826   <2e-16 ***
-    ## periodduring-lockdown                            95.142   <2e-16 ***
-    ## periodpost-lockdown                              37.399   <2e-16 ***
-    ## school_year18/19                                 45.755   <2e-16 ***
-    ## mcqTRUE                                         459.903   <2e-16 ***
-    ## periodduring-lockdown:school_year18/19          -70.613   <2e-16 ***
-    ## periodpost-lockdown:school_year18/19            -38.387   <2e-16 ***
-    ## periodduring-lockdown:mcqTRUE                  -113.954   <2e-16 ***
-    ## periodpost-lockdown:mcqTRUE                     -63.110   <2e-16 ***
-    ## school_year18/19:mcqTRUE                          1.259    0.208    
-    ## periodduring-lockdown:school_year18/19:mcqTRUE   79.765   <2e-16 ***
-    ## periodpost-lockdown:school_year18/19:mcqTRUE     48.183   <2e-16 ***
+    ## (Intercept)                                       9.836   <2e-16 ***
+    ## periodduring-lockdown                            95.917   <2e-16 ***
+    ## periodpost-lockdown                              38.065   <2e-16 ***
+    ## school_year18/19                                 45.073   <2e-16 ***
+    ## mcqTRUE                                         454.977   <2e-16 ***
+    ## periodduring-lockdown:school_year18/19          -71.502   <2e-16 ***
+    ## periodpost-lockdown:school_year18/19            -39.095   <2e-16 ***
+    ## periodduring-lockdown:mcqTRUE                  -114.525   <2e-16 ***
+    ## periodpost-lockdown:mcqTRUE                     -62.879   <2e-16 ***
+    ## school_year18/19:mcqTRUE                          1.630    0.103    
+    ## periodduring-lockdown:school_year18/19:mcqTRUE   80.540   <2e-16 ***
+    ## periodpost-lockdown:school_year18/19:mcqTRUE     48.730   <2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Correlation of Fixed Effects:
     ##                   (Intr) prddr- prdps- sc_18/19 mcTRUE prdd-:_18/19
-    ## prddrng-lck       -0.007                                           
-    ## prdpst-lckd       -0.005  0.346                                    
-    ## schl_y18/19       -0.008  0.452  0.297                             
-    ## mcqTRUE           -0.010  0.534  0.352  0.592                      
-    ## prdd-:_18/19       0.005 -0.626 -0.217 -0.505   -0.340             
-    ## prdp-:_18/19       0.003 -0.229 -0.640 -0.351   -0.233  0.241      
-    ## prddr-:TRUE        0.007 -0.824 -0.278 -0.412   -0.649  0.516      
-    ## prdps-:TRUE        0.004 -0.269 -0.824 -0.264   -0.419  0.169      
-    ## s_18/19:TRU        0.007 -0.409 -0.270 -0.837   -0.697  0.450      
-    ## prdd-:_18/19:TRUE -0.004  0.506  0.171  0.439    0.405 -0.854      
-    ## prdp-:_18/19:TRUE -0.003  0.176  0.523  0.298    0.273 -0.190      
+    ## prddrng-lck       -0.008                                           
+    ## prdpst-lckd       -0.005  0.336                                    
+    ## schl_y18/19       -0.009  0.453  0.290                             
+    ## mcqTRUE           -0.010  0.534  0.344  0.596                      
+    ## prdd-:_18/19       0.005 -0.631 -0.212 -0.506   -0.343             
+    ## prdp-:_18/19       0.003 -0.228 -0.655 -0.347   -0.233  0.239      
+    ## prddr-:TRUE        0.007 -0.825 -0.271 -0.414   -0.649  0.520      
+    ## prdps-:TRUE        0.004 -0.263 -0.827 -0.259   -0.408  0.166      
+    ## s_18/19:TRU        0.007 -0.411 -0.264 -0.838   -0.701  0.451      
+    ## prdd-:_18/19:TRUE -0.004  0.510  0.167  0.440    0.408 -0.854      
+    ## prdp-:_18/19:TRUE -0.003  0.175  0.536  0.296    0.272 -0.189      
     ##                   prdp-:_18/19 prdd-:TRUE prdp-:TRUE s_18/19:
     ## prddrng-lck                                                  
     ## prdpst-lckd                                                  
@@ -1124,10 +1124,10 @@ m_acc_summary
     ## prdd-:_18/19                                                 
     ## prdp-:_18/19                                                 
     ## prddr-:TRUE        0.183                                     
-    ## prdps-:TRUE        0.527        0.315                        
-    ## s_18/19:TRU        0.311        0.481      0.310             
-    ## prdd-:_18/19:TRUE -0.194       -0.612     -0.194     -0.523  
-    ## prdp-:_18/19:TRUE -0.843       -0.205     -0.634     -0.358  
+    ## prdps-:TRUE        0.541        0.307                        
+    ## s_18/19:TRU        0.308        0.483      0.303             
+    ## prdd-:_18/19:TRUE -0.193       -0.617     -0.190     -0.524  
+    ## prdp-:_18/19:TRUE -0.844       -0.204     -0.647     -0.355  
     ##                   prdd-:_18/19:TRUE
     ## prddrng-lck                        
     ## prdpst-lckd                        
@@ -1139,7 +1139,7 @@ m_acc_summary
     ## prdps-:TRUE                        
     ## s_18/19:TRU                        
     ## prdd-:_18/19:TRUE                  
-    ## prdp-:_18/19:TRUE  0.221
+    ## prdp-:_18/19:TRUE  0.220
 
 Save coefficients as a table for in the paper:
 
@@ -1183,18 +1183,18 @@ acc_fit
 ```
 
     ##             period school_year   mcq  accuracy
-    ## 1     pre-lockdown       18/19  TRUE 0.9377455
-    ## 2  during-lockdown       18/19  TRUE 0.9376895
-    ## 3    post-lockdown       18/19  TRUE 0.9357274
-    ## 4     pre-lockdown       19/20  TRUE 0.9303129
-    ## 5  during-lockdown       19/20  TRUE 0.9256960
-    ## 6    post-lockdown       19/20  TRUE 0.9216085
-    ## 7     pre-lockdown       18/19 FALSE 0.8517815
-    ## 8  during-lockdown       18/19 FALSE 0.8450812
-    ## 9    post-lockdown       18/19 FALSE 0.8397286
-    ## 10    pre-lockdown       19/20 FALSE 0.8363418
-    ## 11 during-lockdown       19/20 FALSE 0.8688108
-    ## 12   post-lockdown       19/20 FALSE 0.8558994
+    ## 1     pre-lockdown       18/19  TRUE 0.9377293
+    ## 2  during-lockdown       18/19  TRUE 0.9376704
+    ## 3    post-lockdown       18/19  TRUE 0.9357050
+    ## 4     pre-lockdown       19/20  TRUE 0.9303005
+    ## 5  during-lockdown       19/20  TRUE 0.9256981
+    ## 6    post-lockdown       19/20  TRUE 0.9215727
+    ## 7     pre-lockdown       18/19 FALSE 0.8517224
+    ## 8  during-lockdown       18/19 FALSE 0.8450077
+    ## 9    post-lockdown       18/19 FALSE 0.8396994
+    ## 10    pre-lockdown       19/20 FALSE 0.8364283
+    ## 11 during-lockdown       19/20 FALSE 0.8695082
+    ## 12   post-lockdown       19/20 FALSE 0.8570944
 
 ``` r
 ggplot(acc_fit, aes(x = period, y = accuracy, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +
@@ -1783,38 +1783,38 @@ m_rt_summary
     ## glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e+06))
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
-    ## 10332190 10332361 -5166080 10332160   669366 
+    ## 10294902 10295073 -5147436 10294872   666488 
     ## 
     ## Scaled residuals: 
     ##     Min      1Q  Median      3Q     Max 
-    ##  -2.732  -0.345  -0.070   0.241 220.533 
+    ##  -2.667  -0.337  -0.069   0.235 205.150 
     ## 
     ## Random effects:
     ##  Groups   Name        Variance  Std.Dev.
-    ##  user     (Intercept) 2.828e+05 531.8041
-    ##  course   (Intercept) 2.852e+02  16.8883
-    ##  Residual             1.324e-01   0.3639
-    ## Number of obs: 669381, groups:  user, 133398; course, 2
+    ##  user     (Intercept) 2.935e+05 541.7736
+    ##  course   (Intercept) 2.753e+02  16.5917
+    ##  Residual             1.390e-01   0.3728
+    ## Number of obs: 666503, groups:  user, 133398; course, 2
     ## 
     ## Fixed effects:
     ##                                                Estimate Std. Error t value
-    ## (Intercept)                                    2133.210     13.019 163.848
-    ## periodduring-lockdown                           207.475      6.937  29.909
-    ## periodpost-lockdown                             198.282     10.619  18.673
-    ## school_year18/19                                 28.172      6.564   4.292
-    ## mcqTRUE                                         150.852      5.382  28.028
-    ## periodduring-lockdown:school_year18/19         -280.435     11.362 -24.681
-    ## periodpost-lockdown:school_year18/19           -294.190     17.057 -17.247
-    ## periodduring-lockdown:mcqTRUE                  -210.118      7.464 -28.151
-    ## periodpost-lockdown:mcqTRUE                    -199.308     11.721 -17.005
-    ## school_year18/19:mcqTRUE                        -62.059      6.894  -9.002
-    ## periodduring-lockdown:school_year18/19:mcqTRUE  278.331     12.257  22.708
-    ## periodpost-lockdown:school_year18/19:mcqTRUE    315.189     18.735  16.824
+    ## (Intercept)                                    2134.021     12.889 165.574
+    ## periodduring-lockdown                           208.799      7.148  29.209
+    ## periodpost-lockdown                             197.658     11.085  17.831
+    ## school_year18/19                                 27.350      6.744   4.055
+    ## mcqTRUE                                         150.272      5.544  27.108
+    ## periodduring-lockdown:school_year18/19         -281.173     11.675 -24.084
+    ## periodpost-lockdown:school_year18/19           -293.256     17.615 -16.648
+    ## periodduring-lockdown:mcqTRUE                  -211.632      7.688 -27.526
+    ## periodpost-lockdown:mcqTRUE                    -200.943     12.213 -16.454
+    ## school_year18/19:mcqTRUE                        -61.876      7.084  -8.734
+    ## periodduring-lockdown:school_year18/19:mcqTRUE  279.138     12.590  22.171
+    ## periodpost-lockdown:school_year18/19:mcqTRUE    316.380     19.331  16.366
     ##                                                Pr(>|z|)    
     ## (Intercept)                                     < 2e-16 ***
     ## periodduring-lockdown                           < 2e-16 ***
     ## periodpost-lockdown                             < 2e-16 ***
-    ## school_year18/19                               1.77e-05 ***
+    ## school_year18/19                               5.01e-05 ***
     ## mcqTRUE                                         < 2e-16 ***
     ## periodduring-lockdown:school_year18/19          < 2e-16 ***
     ## periodpost-lockdown:school_year18/19            < 2e-16 ***
@@ -1828,17 +1828,17 @@ m_rt_summary
     ## 
     ## Correlation of Fixed Effects:
     ##                   (Intr) prddr- prdps- sc_18/19 mcTRUE prdd-:_18/19
-    ## prddrng-lck       -0.251                                           
-    ## prdpst-lckd       -0.161  0.334                                    
-    ## schl_y18/19       -0.277  0.483  0.311                             
-    ## mcqTRUE           -0.335  0.567  0.368  0.619                      
-    ## prdd-:_18/19       0.159 -0.617 -0.207 -0.533   -0.352             
-    ## prdp-:_18/19       0.105 -0.214 -0.626 -0.356   -0.234  0.229      
-    ## prddr-:TRUE        0.226 -0.861 -0.281 -0.434   -0.651  0.530      
-    ## prdps-:TRUE        0.143 -0.275 -0.854 -0.275   -0.413  0.170      
-    ## s_18/19:TRU        0.245 -0.440 -0.284 -0.879   -0.703  0.483      
-    ## prdd-:_18/19:TRUE -0.141  0.529  0.173  0.474    0.403 -0.882      
-    ## prdp-:_18/19:TRUE -0.092  0.176  0.537  0.311    0.263 -0.191      
+    ## prddrng-lck       -0.261                                           
+    ## prdpst-lckd       -0.165  0.330                                    
+    ## schl_y18/19       -0.289  0.484  0.308                             
+    ## mcqTRUE           -0.349  0.567  0.363  0.621                      
+    ## prdd-:_18/19       0.166 -0.619 -0.204 -0.533   -0.354             
+    ## prdp-:_18/19       0.109 -0.214 -0.633 -0.354   -0.234  0.228      
+    ## prddr-:TRUE        0.236 -0.862 -0.278 -0.436   -0.651  0.532      
+    ## prdps-:TRUE        0.147 -0.272 -0.856 -0.273   -0.408  0.168      
+    ## s_18/19:TRU        0.256 -0.441 -0.281 -0.880   -0.705  0.484      
+    ## prdd-:_18/19:TRUE -0.148  0.531  0.171  0.475    0.404 -0.883      
+    ## prdp-:_18/19:TRUE -0.096  0.176  0.543  0.310    0.263 -0.191      
     ##                   prdp-:_18/19 prdd-:TRUE prdp-:TRUE s_18/19:
     ## prddrng-lck                                                  
     ## prdpst-lckd                                                  
@@ -1847,10 +1847,10 @@ m_rt_summary
     ## prdd-:_18/19                                                 
     ## prdp-:_18/19                                                 
     ## prddr-:TRUE        0.179                                     
-    ## prdps-:TRUE        0.534        0.305                        
-    ## s_18/19:TRU        0.322        0.490      0.310             
-    ## prdd-:_18/19:TRUE -0.195       -0.613     -0.187     -0.539  
-    ## prdp-:_18/19:TRUE -0.872       -0.194     -0.627     -0.354  
+    ## prdps-:TRUE        0.541        0.301                        
+    ## s_18/19:TRU        0.321        0.491      0.307             
+    ## prdd-:_18/19:TRUE -0.194       -0.615     -0.186     -0.539  
+    ## prdp-:_18/19:TRUE -0.873       -0.194     -0.634     -0.353  
     ##                   prdd-:_18/19:TRUE
     ## prddrng-lck                        
     ## prdpst-lckd                        
@@ -1906,18 +1906,18 @@ rt_fit
 ```
 
     ##             period school_year   mcq       rt
-    ## 1     pre-lockdown       18/19  TRUE 2250.175
-    ## 2  during-lockdown       18/19  TRUE 2245.429
-    ## 3    post-lockdown       18/19  TRUE 2270.149
-    ## 4     pre-lockdown       19/20  TRUE 2284.062
-    ## 5  during-lockdown       19/20  TRUE 2281.419
-    ## 6    post-lockdown       19/20  TRUE 2283.036
-    ## 7     pre-lockdown       18/19 FALSE 2161.382
-    ## 8  during-lockdown       18/19 FALSE 2088.422
-    ## 9    post-lockdown       18/19 FALSE 2065.474
-    ## 10    pre-lockdown       19/20 FALSE 2133.210
-    ## 11 during-lockdown       19/20 FALSE 2340.684
-    ## 12   post-lockdown       19/20 FALSE 2331.491
+    ## 1     pre-lockdown       18/19  TRUE 2249.768
+    ## 2  during-lockdown       18/19  TRUE 2244.900
+    ## 3    post-lockdown       18/19  TRUE 2269.607
+    ## 4     pre-lockdown       19/20  TRUE 2284.294
+    ## 5  during-lockdown       19/20  TRUE 2281.461
+    ## 6    post-lockdown       19/20  TRUE 2281.009
+    ## 7     pre-lockdown       18/19 FALSE 2161.371
+    ## 8  during-lockdown       18/19 FALSE 2088.996
+    ## 9    post-lockdown       18/19 FALSE 2065.773
+    ## 10    pre-lockdown       19/20 FALSE 2134.021
+    ## 11 during-lockdown       19/20 FALSE 2342.820
+    ## 12   post-lockdown       19/20 FALSE 2331.680
 
 ``` r
 ggplot(rt_fit, aes(x = period, y = rt, colour = school_year, lty = mcq, group = interaction(mcq, school_year))) +

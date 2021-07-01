@@ -1,7 +1,7 @@
 SlimStampen Performance During Lockdown
 ================
 Maarten van der Velde
-Last updated: 2021-05-19
+Last updated: 2021-07-01
 
 # Setup
 
@@ -2740,6 +2740,62 @@ ggsave("../output/progress_combi_alt_french.png", width = 9, height = 9)
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
+Make a table of the
+changes:
+
+``` r
+progress_table <- progress_lockdown[school_year == "19/20", .(course, year, level, chapter_simple, prop_change)][prop_change_sd, on = .(course, year, level)]
+
+progress_table <- progress_table[level != "Other"][, .(Course = course, Year = sub(year, pattern = "Year ", replacement = ""), Level = ifelse(grepl("vmbo", level), "vmbo", ifelse(grepl("havo", level), "havo", "vwo")), `Baseline (1 SD)` = scales::percent(sd/100, accuracy = .01, suffix = ""), Chapter = chapter_simple, Change = scales::percent(prop_change, accuracy = .01, prefix = ifelse(prop_change > 0, "+", ""), suffix = ""))]
+
+progress_table <- tidyr::pivot_wider(progress_table, Course:`Baseline (1 SD)`, names_from = Chapter, names_prefix = "Ch. ", values_from = Change)
+
+setorder(progress_table, -Course, Year)
+progress_table
+```
+
+    ## # A tibble: 19 x 15
+    ##    Course Year  Level `Baseline (1 SD… `Ch. 1` `Ch. 2` `Ch. 3` `Ch. 4`
+    ##  * <chr>  <chr> <chr> <chr>            <chr>   <chr>   <chr>   <chr>  
+    ##  1 French 1     vmbo  4.29             -0.45   +0.13   -0.16   <NA>   
+    ##  2 French 1     havo  11.66            -2.29   -4.92   +18.28  <NA>   
+    ##  3 French 1     vwo   1.87             -4.08   -3.07   +1.03   <NA>   
+    ##  4 French 2     vmbo  4.64             +1.89   -4.89   -0.89   <NA>   
+    ##  5 French 2     havo  7.80             -1.68   -2.35   -13.62  <NA>   
+    ##  6 French 2     vwo   2.06             -1.79   -1.08   -6.83   <NA>   
+    ##  7 French 3/4   vmbo  7.89             +1.56   -3.04   +1.82   <NA>   
+    ##  8 French 3/4   havo  14.76            -0.89   -1.64   -2.50   <NA>   
+    ##  9 French 3/4   vwo   10.08            +0.51   -2.67   -14.87  <NA>   
+    ## 10 Engli… 1     vmbo  1.99             -0.06   +0.04   -3.26   -3.71  
+    ## 11 Engli… 1     havo  7.15             +0.01   -0.24   -0.92   +18.77 
+    ## 12 Engli… 1     vwo   3.38             +0.28   +0.39   -0.04   -14.02 
+    ## 13 Engli… 2     vmbo  9.75             +0.32   +0.11   -2.38   -1.73  
+    ## 14 Engli… 2     havo  1.84             -0.03   -0.11   -1.27   -5.57  
+    ## 15 Engli… 2     vwo   3.51             -1.85   -1.53   -6.76   -8.49  
+    ## 16 Engli… 3     vmbo  8.76             +0.43   -0.07   -0.29   -3.97  
+    ## 17 Engli… 3     havo  1.97             -0.28   -1.25   -5.81   -11.01 
+    ## 18 Engli… 3     vwo   3.60             +0.26   -3.29   -6.79   -5.33  
+    ## 19 Engli… 4     vmbo  1.94             +0.58   -2.30   -2.70   +14.02 
+    ## # … with 7 more variables: `Ch. 5` <chr>, `Ch. 6` <chr>, `Ch. 7` <chr>,
+    ## #   `Ch. 8` <chr>, `Ch. O` <chr>, `Ch. 12` <chr>, `Ch. 13` <chr>
+
+``` r
+options(knitr.kable.NA = "")
+progress_table_tex <- knitr::kable(progress_table,
+                                   align = c("l", "l", "l", rep("r", 12)),
+                                   row.names = FALSE,
+                                   format = "latex",
+                                   booktabs = TRUE,
+                                   escape = FALSE)
+
+progress_table_tex <- kableExtra::collapse_rows(progress_table_tex, 
+                                                columns = 1:2, 
+                                                valign = "top",
+                                                latex_hline = "major")
+
+cat(progress_table_tex, file = "../output/progress_table.tex")
+```
+
 ### English
 
 NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are
@@ -2860,7 +2916,7 @@ p_progress_english <- plot_grid(p_english_y1, p_english_y2, p_english_y3, p_engl
 p_progress_english
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-111-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-112-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_english.pdf", width = 9, height = 9)
@@ -2891,7 +2947,7 @@ ggplot(progress_lockdown[course == "English" & level != "Other"], aes(x = school
   theme_paper
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-112-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-113-1.png)<!-- -->
 
 Change between school
 years:
@@ -2914,7 +2970,7 @@ p_change_english <- ggplot(progress_lockdown[school_year == "19/20" & course == 
 p_change_english 
 ```
 
-![](02_performance_files/figure-gfm/unnamed-chunk-113-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-114-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_change_english.pdf", width = 9, height = 6)
@@ -3186,7 +3242,7 @@ plot_grid(
     
     ## Warning: Removed 1 rows containing missing values (geom_text).
 
-![](02_performance_files/figure-gfm/unnamed-chunk-115-1.png)<!-- -->
+![](02_performance_files/figure-gfm/unnamed-chunk-116-1.png)<!-- -->
 
 ``` r
 ggsave("../output/progress_combi_alt_english.pdf", width = 9, height = 11)
@@ -3307,20 +3363,23 @@ sessionInfo()
     ## [5] ggplot2_3.3.2     DBI_1.1.0         data.table_1.13.6
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] tidyselect_0.2.5    xfun_0.21           purrr_0.3.2        
+    ##  [1] tidyselect_1.1.1    xfun_0.21           purrr_0.3.2        
     ##  [4] splines_3.6.3       lattice_0.20-41     colorspace_1.4-1   
-    ##  [7] vctrs_0.2.2         htmltools_0.3.6     viridisLite_0.3.0  
-    ## [10] yaml_2.2.0          blob_1.2.1          rlang_0.4.10       
-    ## [13] pillar_1.4.2        nloptr_1.2.1        glue_1.3.1         
-    ## [16] withr_2.3.0         bit64_0.9-7         plyr_1.8.4         
-    ## [19] lifecycle_0.1.0     stringr_1.4.0       munsell_0.5.0      
-    ## [22] gtable_0.3.0        evaluate_0.14       memoise_1.1.0      
-    ## [25] labeling_0.3        knitr_1.23          Rcpp_1.0.6         
-    ## [28] scales_1.0.0        bit_1.1-14          digest_0.6.19      
-    ## [31] stringi_1.4.3       dplyr_0.8.3         numDeriv_2016.8-1.1
-    ## [34] tools_3.6.3         magrittr_1.5        tibble_2.1.3       
-    ## [37] RSQLite_2.2.0       crayon_1.3.4        tidyr_1.0.0        
-    ## [40] pkgconfig_2.0.2     MASS_7.3-51.4       ellipsis_0.3.0     
-    ## [43] ggridges_0.5.1      assertthat_0.2.1    minqa_1.2.4        
-    ## [46] rmarkdown_2.6       R6_2.4.0            boot_1.3-25        
-    ## [49] nlme_3.1-149        compiler_3.6.3
+    ##  [7] vctrs_0.3.8         htmltools_0.3.6     viridisLite_0.3.0  
+    ## [10] yaml_2.2.0          utf8_1.1.4          blob_1.2.1         
+    ## [13] rlang_0.4.10        pillar_1.4.2        nloptr_1.2.1       
+    ## [16] glue_1.3.1          withr_2.3.0         bit64_0.9-7        
+    ## [19] plyr_1.8.4          lifecycle_0.1.0     stringr_1.4.0      
+    ## [22] munsell_0.5.0       gtable_0.3.0        rvest_0.3.4        
+    ## [25] kableExtra_1.3.1    evaluate_0.14       memoise_1.1.0      
+    ## [28] labeling_0.3        knitr_1.23          fansi_0.4.0        
+    ## [31] Rcpp_1.0.6          scales_1.0.0        webshot_0.5.2      
+    ## [34] bit_1.1-14          digest_0.6.19       stringi_1.4.3      
+    ## [37] dplyr_0.8.3         numDeriv_2016.8-1.1 cli_2.2.0          
+    ## [40] tools_3.6.3         magrittr_1.5        tibble_2.1.3       
+    ## [43] RSQLite_2.2.0       crayon_1.3.4        tidyr_1.0.0        
+    ## [46] pkgconfig_2.0.2     MASS_7.3-51.4       ellipsis_0.3.0     
+    ## [49] xml2_1.2.0          ggridges_0.5.1      httr_1.4.0         
+    ## [52] rstudioapi_0.13     assertthat_0.2.1    minqa_1.2.4        
+    ## [55] rmarkdown_2.6       R6_2.4.0            boot_1.3-25        
+    ## [58] nlme_3.1-149        compiler_3.6.3

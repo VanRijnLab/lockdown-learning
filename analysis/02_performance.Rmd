@@ -1586,6 +1586,36 @@ ggsave("../output/progress_combi_alt_french.png", width = 9, height = 9)
 ```
 
 
+Make a table of the changes:
+```{r}
+progress_table <- progress_lockdown[school_year == "19/20", .(course, year, level, chapter_simple, prop_change)][prop_change_sd, on = .(course, year, level)]
+
+progress_table <- progress_table[level != "Other"][, .(Course = course, Year = sub(year, pattern = "Year ", replacement = ""), Level = ifelse(grepl("vmbo", level), "vmbo", ifelse(grepl("havo", level), "havo", "vwo")), `Baseline (1 SD)` = scales::percent(sd/100, accuracy = .01, suffix = ""), Chapter = chapter_simple, Change = scales::percent(prop_change, accuracy = .01, prefix = ifelse(prop_change > 0, "+", ""), suffix = ""))]
+
+progress_table <- tidyr::pivot_wider(progress_table, Course:`Baseline (1 SD)`, names_from = Chapter, names_prefix = "Ch. ", values_from = Change)
+
+setorder(progress_table, -Course, Year)
+progress_table
+
+options(knitr.kable.NA = "")
+progress_table_tex <- knitr::kable(progress_table,
+                                   align = c("l", "l", "l", rep("r", 12)),
+                                   row.names = FALSE,
+                                   format = "latex",
+                                   booktabs = TRUE,
+                                   escape = FALSE)
+
+progress_table_tex <- kableExtra::collapse_rows(progress_table_tex, 
+                                                columns = 1:2, 
+                                                valign = "top",
+                                                latex_hline = "major")
+
+cat(progress_table_tex, file = "../output/progress_table.tex")
+```
+
+
+
+
 ### English
 
 NOTE: chapters without a number (Bridging the Gap, Exam Preparation) are shown as "O" in the plot.
